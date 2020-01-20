@@ -1,11 +1,9 @@
-*******************************************************************************
-*** Memory ***
-*******************************************************************************
+# Memory
 
 Pebble is relatively heavy when it comes to memory usage. It is certainly inadvisable to use Pebble variables to store large amounts of data, like bitmaps, sounds, etc.
 
 
-* Variables
+# Variables
 
 The Variable class has 3 fields--string name, ITypeDef type, object value--so allocating a single bool actually allocates 3 pointers. 
 
@@ -17,74 +15,33 @@ The Variable class has 3 fields--string name, ITypeDef type, object value--so al
 	
 
 	
-* IExpr, ie. compiled scripts
+# IExpr, ie. compiled scripts
 
 Pebble gives programs that embed it the ability to hold into "compiled" versions of scripts (IExpr's), so that they can run them later or potentially multiple times. When Pebble "compiles" it results in abstract syntax tree whose nodes are children IExpr. Executing the script means calling the IExpr.Execute function. I looked over the existing IExpr classes and found that most don't store more data than they absolutely need to, a few store a tiny bit more, and a couple (Expr_Class mainly) are egregious. Overall, though, I don't see a lot of benefit to trying to squeeze a few bytes out of this.
 
 It is probably true that if Pebble compiled to byte code and ran on a virtual machine (as opposed to the AST/Execute thing it's doing now) the compiled version would be smaller. However, I don't think it would be smaller by very much, nor do I think it would necessarily be much faster. (Execute is already reasonably fast.) Compiling to byte code *would* make compilation take longer, though, which, depending on the specific script, may make the whole process of compiling and executing take longer. I generally assume that most people aren't going to be saving "compiled" scripts, anyway, so making compilation longer in order to optimize this uncommon use case seems counterproductive              .
 
 
-* The Call Stack
+# Garbage Collection?
 
-//! todo
-
-Pebble Interpreter (C) 2017 Patrick Cyr
-439 - start
-197 - start GC
-197 - before create engine
-267 - after register libraries
-325 - before parse GC
-496 - after parse GC
-546 - end script
-506 - end script GC
-506 - after evaluate GC
-Returned: SUCCESS! Took 16ms.
-383 - program done
-Press any key to exit.
+Pebble does not have it's own memory manager. All memory management is taken care of by C#. This may be a naive way of doing it, but I don't see me writing a better manager than C#'s so why bother.
 
 
-
-** After reducing stack by 512 to 512
-18k less
-
-
-Pebble Interpreter (C) 2017 Patrick Cyr
-431 - start
-197 - start GC
-197 - before create engine
-249 - after register libraries
-307 - before parse GC
-478 - after parse GC
-528 - end script
-488 - end script GC
-488 - after evaluate GC
-Returned: SUCCESS! Took 14ms.
-365 - program done
-Press any key to exit.
-
-
-Engine & libraries alone are 70k. By comparison, Lua's footprint is 150-200k, depending on libraries.
-36k of that is the stack of StackScopes when stack is 1024 fixed depth
-
-171k to run the parse stage, but there's an extra 440k allocated and destroyed.
-Tutorial itself adds 10k of something...globals? Not sure, with 40k of extra allocations. 
-
-
-* Garbage Collection?
-
-Pebble does not have it's own memory manager. All memory management is taken care of by C#. This may be a naive way of doing it, but I don't see me writing a better manager than C#'s, so why bother.
-
-
-* Notes
+# Notes
 
 - If you are calling a member function inside a defstructor and thisScope is null rather than the class instance, you forgot to pass in the class type in the FunctionValue_Host constructor in the function boilerplate.
 
 
-* Initialization order
+# Initialization order
 
 In Pebble, types and variables are only in scope to code AFTER their declaration. This means there can never be circular dependencies. Static class variables are initialized when the code executes the class declaration. While this can make certain things a bit more difficult, it was deliberate decision to do it this way. First, it's very easy to understand when things are in scope, and when they get initialized. Second, the compiler doesn't have to do a bunch of time-consuming work to handle potential circular dependencies.
 
 
-* Error handling in native functions
+# Error handling in native functions
 
 "Built-in" functions and other C# code that can be called by Pebble script should handle any exceptions the C# code could throw and instead use the Pebble exception system (ie. SetRuntimeError). While at the highest level Pebble does catch unhandled exceptions, doing so bypasses any script "catch" statements
+
+
+# A note about the license
+
+Coco/R's license says that generated files--namely, parser.cs and scanner.cs--are not included in their copyright. Virtually all of the content of the .frame files (minus a few tags) is included in the generated .cs files. Because of this, I believe that including the .frame files in this non-GPL project does not run against the spirit of the Coco/R license. Pebble users who do not wish to make modifications to the grammar and who are concerned about this can just delete the .frame files.
