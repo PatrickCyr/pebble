@@ -1,0 +1,496 @@
+/******************************************************************************
+
+Notes about ATG format:
+= separates the sides of a production A = a b c .
+. terminates a production A = a b c .
+| separates alternatives a b | c | d e means a b or c or d e
+( ) groups alternatives (a | b) c means a c or b c
+[ ] option [a] b means a b or b
+{ } iteration (0 or more times) {a} b means b or a b or a a b or ... 
+
+******************************************************************************/
+
+COMPILER Pebble
+
+	const int // types
+	  undef = 0, integer = 1, boolean = 2;
+
+	const int // object kinds
+	  var = 0, proc = 1;
+
+	public CodeGenerator gen;
+	public IExpr _headExpr;
+	public ExecContext context;
+
+	//------------------ token sets ------------------------------------
+	/*
+	static BitArray
+	startOfTypeName = NewBitArray(_const, _volatile, _void, _char, _short, _int, _long,
+		                _double, _signed, _unsigned, _struct, _union, _enum),
+	startOfDecl     = NewBitArray(_typedef, _extern, _static, _auto, _register, _const, 
+	                  _volatile, _void, _char, _short, _int, _long, _double, _signed, 
+	                  _unsigned, _struct, _union, _enum);
+
+	private static BitArray NewBitArray(params int[] val) {
+		BitArray s = new BitArray(128);
+		foreach (int x in val) s[x] = true;
+		return s;
+	}
+	*/
+	//---------- LL(1) conflict resolvers ------------------------------
+
+	// Return the n-th token after the current lookahead token
+	Token Peek (int n) {
+		scanner.ResetPeek();
+		Token x = la;
+		while (n > 0) { x = scanner.Peek(); n--; }
+		return x;
+	}
+
+	private bool IsTypeName(Token x) {
+		return context.IsType(x.val);
+	}
+
+	bool IsDecl() { // return true if followed by Decl
+		if ("override" == la.val 
+				|| "void" == la.val
+				|| "global" == la.val 
+				|| "const" == la.val 
+				|| "functype" == la.val 
+				|| "funcdef" == la.val 
+				|| "static" == la.val)
+			return true;
+		scanner.ResetPeek();
+		Token laa = scanner.Peek();
+		if (null == laa)
+			return false;
+
+		// Anywhere we have two identifiers in sequence, it must be a declaration.
+		if (1 == la.kind && 1 == laa.kind)
+			return true;
+
+		// That isn't sufficient, though, in the case of templates, so here's the old check,
+		// which also makes sure this isn't a ::.
+		// Note this code is probably broken if there are ever static template members, ie. A<num>::x; 
+		// I'm not positive that's needed. I suppose it depends on the order these productions are checked for.
+		return IsTypeName(la) && null != laa && "::" != laa.val;
+	}
+
+	bool IsClassName() {
+		return context.IsType(la.val);
+	}
+
+	bool IsScopeOpStart() {
+		scanner.ResetPeek();
+		Token laa = scanner.Peek();
+		// Here I'm assuming type 1 means "identifier". That seems to be the case but unsure why.
+		// This would not work for static in templates, btw.
+		return 1 == la.kind && null != laa && "::" == laa.val;
+	}
+
+	// True, if the comma is not a trailing one, like the last one in: a, b, c,      
+	bool NotFinalComma () {
+		string peek = Peek(1).val;
+		return la.val == "," && peek != "]" && peek != "}";
+	}
+
+/*****************************************************************************/
+	CHARACTERS
+/*****************************************************************************/
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_".
+  digit = "0123456789".
+  cr  = '\r'.
+  lf  = '\n'.
+  tab = '\t'.
+  CharInLine = ANY - '\r' - '\n'.
+  NoDoubleQuoteNoBackslash = CharInLine - '\"' - '\\'.
+  OctalDigit = "01234567".
+  ZeroToThree = "0123".
+
+/*****************************************************************************/
+	TOKENS
+/*****************************************************************************/
+  ident  = letter {letter | digit}.
+
+  //number = (digit {digit} '.' {digit}) | digit {digit}.
+  /*
+  number = ( 
+				'.' digit {digit} [('e'|'E')  ['+'|'-'] digit {digit}]
+				| digit {digit} '.' {digit} [('e'|'E')  ['+'|'-'] digit {digit}]
+				| digit {digit} ('e'|'E')  ['+'|'-'] digit {digit}
+			).
+  */
+	number = ( 
+				'.' digit {digit} [('e'|'E')  ['+'|'-'] digit {digit}]
+				| digit {digit} '.' {digit} [('e'|'E')  ['+'|'-'] digit {digit}]
+				| digit {digit} ('e'|'E')  ['+'|'-'] digit {digit}
+				| digit {digit}
+			).
+	
+/*
+  StringLiteral =
+	'\"' [ ( NoDoubleQuoteNoBackslash |
+	('\\' ( 'b' | 't' | 'n' | 'f' | 'r' | '\"' | '\'' | '\\' |
+	OctalDigit | OctalDigit OctalDigit | ZeroToThree OctalDigit OctalDigit )) )
+	{ ( NoDoubleQuoteNoBackslash |
+	('\\' ( 'b' | 't' | 'n' | 'f' | 'r' | '\"' | '\'' | '\\' |
+	OctalDigit | OctalDigit OctalDigit | ZeroToThree OctalDigit OctalDigit )) ) } ] '\"'.
+*/
+// Original above, below is Pebble's, which has fewer escape sequences.
+StringLiteral =
+	'\"' [ ( NoDoubleQuoteNoBackslash |
+	('\\' ( 't' | 'n' | '\"' | '\\' )) )
+	{ ( NoDoubleQuoteNoBackslash |
+	('\\' ( 't' | 'n' | '\"' | '\\' )) ) } ] '\"'.
+
+/*****************************************************************************/
+/*	COMMENTS */
+/*****************************************************************************/
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO lf
+
+/*****************************************************************************/
+/* WHITESPACE */
+/*****************************************************************************/
+IGNORE cr + lf + tab
+
+
+/*****************************************************************************/
+	PRODUCTIONS
+/*****************************************************************************/
+
+//---------------------------
+//---------- Types ----------
+//---------------------------
+
+TypeSpecifier<ref ITypeRef type> 
+=													(. bool isConst = false; .)										
+	( FunctionType<ref type>
+	| TypeSpecifierNoFunc<ref type>
+    )												(. if (isConst) type.SetConst(true); .) .
+
+TypeSpecifierNoFunc<ref ITypeRef type> =			(. string className = null; ITypeRef genType = null; TypeRefList genericTypes = new TypeRefList(); .)
+	 ident											(. className = t.val; .)
+		['<' TypeSpecifier<ref genType>				(. genericTypes.Add(genType); .)
+			{',' TypeSpecifier<ref genType>			(. genericTypes.Add(genType); .) }
+		'>'											
+		]											
+													(. type = new TypeRef(className, genericTypes); .) .
+
+FunctionTypeArg<ref TypeRefList argTypes, ref LiteralList defaultValues>	(. ITypeRef argType = null; IExpr litValue = null; .)
+=	TypeSpecifier<ref argType>						(. argTypes.Add(argType); .)
+	[ '=' Literal<ref litValue>						(.	while (defaultValues.Count < argTypes.Count)
+															defaultValues.Add(null);
+														defaultValues[defaultValues.Count - 1] = (Expr_Literal) litValue; .) 
+	].
+
+FunctionType<ref ITypeRef varType>					(. ITypeRef retType = null; TypeRefList args = new TypeRefList(); LiteralList defaultValues = new LiteralList(); bool isConst = false; .)	
+=													
+	"functype" 
+	'<' (TypeSpecifier<ref retType> | "void"		(. retType = new TypeRef("void"); .) )
+	'(' 
+	[ FunctionTypeArg<ref args, ref defaultValues> 
+		{ ','  FunctionTypeArg<ref args, ref defaultValues> }
+	]
+	')' '>'											(. varType = new TypeRef_Function(retType, args, defaultValues, false, isConst); .) .
+
+
+//----------------------------------
+//---------- Declarations ----------
+//----------------------------------
+
+FunctionDeclArg<ref TypeRefList argTypes, ref StrList argNames, ref LiteralList defaultValues>	(. ITypeRef argType = null; IExpr litValue = null; .)
+=	TypeSpecifier<ref argType> ident				(. argTypes.Add(argType); argNames.Add(t.val); .)
+	[ '=' Literal<ref litValue>						(.	while (defaultValues.Count < argTypes.Count)
+															defaultValues.Add(null);
+														defaultValues[defaultValues.Count - 1] = (Expr_Literal) litValue; .) 
+	]. 
+
+Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; ITypeRef valType = null; IExpr value = null; IExpr init = null; IExpr initializer = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); .)
+=	{
+		 "const"		(. mods._const = true; .)
+		| "global"		(. mods._global = true; .)
+		| "static"		(. mods._static = true; .)
+		| "override"	(. mods._override = true; .)
+	}
+	( TypeSpecifier<ref type> | "void" (. type = new TypeRef("void"); .) )		(. if (null != type) type.SetConst(mods._const); .) // Unsure why I have to do the null check there, but compiler crashes on some syntax errors if I don't. (eg. "num const;")
+	Ident<ref sym> 
+	(	
+		(. expr = new Expr_Set(type, sym, mods).SetDebugInfo(this); .)
+		[(
+			'=' ( "new"	[TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. value = new Expr_New(null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); value.SetDebugInfo(this); .)
+				| AssignExpr<ref init>					(. ((Expr_Set)expr).SetValue(init); .) 
+				)
+		|
+			"<-" Expr<ref script>						(. expr = new Expr_ScriptToValue(expr, script).SetDebugInfo(this); .) 
+		)] 
+		';'
+	|
+		'(' 
+		[
+			FunctionDeclArg<ref argTypes, ref argNames, ref defaultValues>
+			{ ',' FunctionDeclArg<ref argTypes, ref argNames, ref defaultValues> }
+		]
+		')' 
+		StatementBlock<ref body>						(. expr = Expr_Set.CreateFunctionLiteral(type, sym, argTypes, defaultValues, argNames, body, mods); expr.SetDebugInfo(this); ((Expr_Set)expr).value.SetDebugInfo(this); .) 
+	).	
+
+
+//---------------------------------
+//---------- Expressions ----------
+//---------------------------------
+
+// This handles operator precedence.  Lowest precedence first, I'm pretty sure.
+
+Expr<ref IExpr expr>       
+=	AssignExpr<ref expr>.
+
+AssignExpr<ref IExpr expr>		(. IExpr expr1 = null, expr2 = null; .)
+=	CondExpr<ref expr1>			(. expr = expr1; .)
+	[( '=' Expr<ref expr2>		(. expr = new Expr_Assign(expr1, expr2).SetDebugInfo(this); .) 
+	 | "+=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.ADD, expr1, expr2)).SetDebugInfo(this); .) 
+	 | "-=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.SUB, expr1, expr2)).SetDebugInfo(this); .) 
+	 | "*=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.MULT, expr1, expr2)).SetDebugInfo(this); .) 
+	 | "/=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.DIV, expr1, expr2)).SetDebugInfo(this); .) 
+	 | "..=" Expr<ref expr2>	(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.CONCAT, expr1, expr2)).SetDebugInfo(this); .)
+	 | "<<" Expr<ref expr2>		(. expr = new Expr_Stream(expr1, expr2).SetDebugInfo(this); .) 
+	)].
+
+CondExpr<ref IExpr expr>								(. IExpr expr1 = null, expr2 = null, expr3 = null; .)
+=	LogOrExpr<ref expr1>								(. expr = expr1; .)
+	['?' Expr<ref expr2> ':' CondExpr<ref expr3>		(. expr = new Expr_Conditional(expr1, expr2, expr3).SetDebugInfo(this); .) ].
+
+LogOrExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
+=	LogAndExpr<ref expr1>					(. expr = expr1; .)
+	{"||" LogAndExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.OR, expr, expr2).SetDebugInfo(this); .) }.
+
+LogAndExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
+=	EqlExpr<ref expr1>						(. expr = expr1; .)
+	{"&&" EqlExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.AND, expr, expr2).SetDebugInfo(this); .) }.
+
+EqlExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
+=	RelExpr<ref expr1>						(. expr = expr1; .)
+	{("==" RelExpr<ref expr2>				(. expr = new Expr_Compare(expr, expr2, false).SetDebugInfo(this); .)
+	 |"!=" RelExpr<ref expr2>				(. expr = new Expr_Compare(expr, expr2, true).SetDebugInfo(this);  .)
+	 |"<-" RelExpr<ref expr2>				(. expr = new Expr_ScriptToValue(expr, expr2).SetDebugInfo(this);	.)
+	 )}.
+
+RelExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
+=	AddExpr<ref expr1>						(. expr = expr1; .)
+	{('<' AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.LT, expr, expr2).SetDebugInfo(this); .)
+	 |'>' AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.GT, expr, expr2).SetDebugInfo(this); .)
+	 |"<=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.LEQ, expr, expr2).SetDebugInfo(this); .)
+	 |">=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.GEQ, expr, expr2).SetDebugInfo(this); .)
+	 |"~=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.STREQI, expr, expr2).SetDebugInfo(this); .)
+	 )}.
+
+AddExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
+=	MultExpr<ref expr1>						(. expr = expr1; .)
+	{('+' MultExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.ADD, expr, expr2).SetDebugInfo(this); .)
+	 |'-' MultExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.SUB, expr, expr2).SetDebugInfo(this); .)
+	 |".." MultExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.CONCAT, expr, expr2).SetDebugInfo(this); .)
+	 )}.
+
+MultExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
+=	CastExpr<ref expr1>						(. expr = expr1; .)
+	{('*' CastExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.MULT, expr, expr2).SetDebugInfo(this); .)
+	 |'/' CastExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.DIV, expr, expr2).SetDebugInfo(this); .)
+	 |'%' CastExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.MOD, expr, expr2).SetDebugInfo(this); .)
+	 )}.
+
+CastExpr<ref IExpr expr>   
+= 	UnaryExpr<ref expr>.
+
+UnaryExpr<ref IExpr expr>					(. List<int> li = new List<int>(); .)
+=	{("++"									(. li.Add(0); .)
+	| "--"									(. li.Add(1); .)
+	| '#'									(. li.Add(2); .)
+	| '$'									(. li.Add(3); .)
+	)}					
+	UnaryPost<ref expr>						(.	for (int i = li.Count - 1; i >= 0; --i) {
+													if (0 == li[i])
+														expr = Expr_Assign.CreateInc(expr).SetDebugInfo(this); 
+													else if (1 == li[i])
+														expr = Expr_Assign.CreateDec(expr).SetDebugInfo(this); 
+													else if (2 == li[i])
+														expr = new Expr_Length(expr).SetDebugInfo(this); 
+													else if (3 == li[i])
+														expr = new Expr_UnOp(Expr_UnOp.OP.TOSTRING, expr).SetDebugInfo(this);	
+												}
+	.) .
+
+
+UnaryPost<ref IExpr expr>						(. ITypeRef valType = null; IExpr initializer = null; .)
+=	( PostfixExpr<ref expr>
+	| '+' CastExpr<ref expr>					(. expr = new Expr_UnOp(Expr_UnOp.OP.POS, expr).SetDebugInfo(this); .)
+	| '-' CastExpr<ref expr>					(. expr = new Expr_UnOp(Expr_UnOp.OP.NEG, expr).SetDebugInfo(this); .)
+	| '!' CastExpr<ref expr>					(. expr = new Expr_UnOp(Expr_UnOp.OP.NOT, expr).SetDebugInfo(this); .)
+	| "new" [TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. expr = new Expr_New(valType, initializer).SetDebugInfo(this); .)
+	).
+
+PostfixExpr<ref IExpr expr>					(. ExprList args = null; IExpr indexExpr = null; .)
+=	Primary<ref expr>
+	{ '[' Expr<ref indexExpr> ']'			(. expr = new Expr_Index(expr, indexExpr).SetDebugInfo(this); .)
+	| '.'  ident							(. expr = new Expr_Dot(expr, t.val).SetDebugInfo(this); .)
+	| '(' [ArgExprList<ref args>] ')'		(. expr = new Expr_Call(expr, args).SetDebugInfo(this); args = null; .) /* Unsure why, but without setting args to null there there is some sort of recursion problem and args appear in function calls they shouldn't. */
+	| "++"									(. expr = new Expr_Postrement(expr, false).SetDebugInfo(this); .)
+	| "--"									(. expr = new Expr_Postrement(expr, true).SetDebugInfo(this); .)
+	}.
+
+//Primary = ident | intcon | floatcon | charcon | string | '(' Expr ')'.
+Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = null; .)
+=	( 
+	(IF(IsScopeOpStart()) Ident<ref className> "::" ident	(. expr = new Expr_Scope(className, t.val).SetDebugInfo(this); .) )
+	| "::" ident											(. expr = new Expr_Scope(null, t.val).SetDebugInfo(this); .)
+	| ident													(. expr = new Expr_Symbol(t.val).SetDebugInfo(this); .)
+	| "this"												(. expr = new Expr_This().SetDebugInfo(this); .)
+	| "catch" StatementBlock<ref exprBlock> 				(. expr = new Expr_Catch(exprBlock).SetDebugInfo(this); .)
+	//| Test<ref expr>
+	| Literal<ref expr>
+	| '(' Expr<ref expr> ')'
+	).
+
+Literal<ref IExpr expr>
+=	( "true"								(. expr = new Expr_Literal(true, IntrinsicTypeDefs.BOOL).SetDebugInfo(this); .)
+	| "false"								(. expr = new Expr_Literal(false, IntrinsicTypeDefs.BOOL).SetDebugInfo(this); .)
+	| "null"								(. expr = new Expr_Literal(null, IntrinsicTypeDefs.NULL).SetDebugInfo(this); .)
+	| number								(. expr = new Expr_Literal(Convert.ToDouble(t.val), IntrinsicTypeDefs.NUMBER).SetDebugInfo(this); .)
+	| StringLiteral							(. expr = new Expr_Literal(t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING).SetDebugInfo(this); .)
+	).
+
+// This is useful for productions that require two strings, so they can't both use t.val.
+Ident<ref string id>
+=	ident				(. id = t.val; .) .
+
+
+// This is exactly the original, strangely.
+// I think it is saying "Constant expressions are any expressions that aren't assignments"?
+// ConstExpr<ref IExpr expr> = CondExpr<ref expr>.
+
+ArgExprList<ref ExprList args>		(. args = new ExprList(); IExpr arg1 = null, arg2 = null; .)
+=	AssignExpr<ref arg1>			(. args.Add(arg1); .)
+	{','  AssignExpr<ref arg2>		(. args.Add(arg2); .) }.
+
+ForExpr<ref IExpr expr>			(. string sym = null; IExpr minExpr = null; IExpr maxExpr = null; IExpr body = null; IExpr stepExpr = null; .)
+=	"for" '(' Ident<ref sym> '=' Expr<ref minExpr> ',' Expr<ref maxExpr> [ ',' Expr<ref stepExpr> ]	')' 
+		EmbeddedStat<ref body>							(. expr = new Expr_For(sym, minExpr, maxExpr, stepExpr, body).SetDebugInfo(this); .) .
+
+
+ForEachExpr<ref IExpr expr>		(. string kIdent = null, vIdent = null; IExpr sym = null, body = null; .)
+=	"foreach" '(' Ident<ref kIdent> ',' Ident<ref vIdent> "in" Expr<ref sym> ')' 
+		EmbeddedStat<ref body>							(. Expr_ForEach forEachExpr = new Expr_ForEach(sym, kIdent, vIdent, body); forEachExpr.SetDebugInfo(this); expr = forEachExpr; .) .
+
+TypeAliasStat<ref IExpr expr>	(. ITypeRef typeRef = null; string ident = null; .)
+=	"typealias" Ident<ref ident> '=' TypeSpecifier<ref typeRef>	(. Expr_TypeAlias taExpr = new Expr_TypeAlias(ident, typeRef); taExpr.SetDebugInfo(this); expr = taExpr; taExpr.PreRegister(context); .) .
+
+
+//--------------------------------
+//---------- Statements ----------
+//--------------------------------
+
+Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
+=	StatementBlock<ref expr>
+	| Class<ref expr>
+	| Enum<ref expr>
+	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(cond, trueCase); ifExpr.SetDebugInfo(this); expr = ifExpr; .)
+		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ]
+	| ForExpr<ref expr>
+	| ForEachExpr<ref expr>
+	| "break" ';'												(. expr = new Expr_Break().SetDebugInfo(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue().SetDebugInfo(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(cond).SetDebugInfo(this); .)
+	| Assert<ref expr>
+	| TypeAliasStat<ref expr> ';'
+	| (IF(IsDecl()) Decl<ref expr> | Expr<ref expr> ';' )
+	| ';'
+	.
+
+// A series of Statements.  Has value: the value of the final Statement.
+// What is it's value if it has no Statements, though?!
+StatementBlock<ref IExpr exprBlock>
+=						(.	Expr_ExprList block = new Expr_ExprList(); block.SetDebugInfo(this);
+							exprBlock = block;
+							IExpr expr = null; 
+						.)
+	'{'	{
+		Stat<ref expr>	(. if (null != expr) block.nodes.Add(expr); expr = null; .) 
+	} '}'.
+
+
+// This is the type of statement that could be, for example, the body of a for or if statement.
+EmbeddedStat<ref IExpr expr>									(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
+=	( StatementBlock<ref expr>
+	| Expr<ref expr> ';'
+	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(cond, trueCase); ifExpr.SetDebugInfo(this); expr = ifExpr; .)
+		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ] 
+	| ForExpr<ref expr>
+	| ForEachExpr<ref expr>
+	| "break" ';'												(. expr = new Expr_Break().SetDebugInfo(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue().SetDebugInfo(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(cond).SetDebugInfo(this); .)
+	| ';'
+	).
+
+
+Class<ref IExpr expr>							(. Expr_Class scope = null; bool isSealed = false; bool isUninstantiable = false; IExpr memberDec = null; IExpr block = null; .)
+=	{ "sealed"									(. isSealed = true; .)
+	 |"uninstantiable"							(. isUninstantiable = true; .) 
+	}
+	"class" ident								(. scope = new Expr_Class(t.val); scope.SetDebugInfo(this); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; .)
+		[ ':' ident								(. scope.parent = t.val; .) ]
+												(. scope.Register(context); .)
+		[ '{' { 
+			Decl<ref memberDec>							(. scope.AddMember((Expr_Set) memberDec); .) 
+			| "constructor" StatementBlock<ref block>	(. scope.SetConstructor(context, block); .)
+		} '}' ]
+	';'											(. scope.RegisterMembers(context); .).
+
+
+Enum<ref IExpr expr>							(. IExpr initializer = null; Expr_Enum e = null; ITypeRef enumType = null; string exprName; string valName = null;.)
+=	"enum" '<' TypeSpecifier<ref enumType> '>' ident  (. exprName = t.val; e = new Expr_Enum(exprName, enumType); e.SetDebugInfo(this); expr = e; .)
+	'{' [
+		Ident<ref valName> [ '=' Expr<ref initializer> ]								(. e.AddValue(valName, initializer); initializer = null; .) 
+		{
+			IF (NotFinalComma()) "," Ident<ref valName> [ '=' Expr<ref initializer> ] 	(. e.AddValue(valName, initializer); initializer = null; .)
+		} ] [","]
+	"}" .
+
+Assert<ref IExpr expr>		(. IExpr conditionExpr = null; IExpr messageExpr = null; IExpr block = null; .)
+= "assert" '(' Expr<ref conditionExpr> {',' Expr<ref messageExpr> } ')' ( StatementBlock<ref block> | ';' )
+	(. 
+#if PEBBLE_ASSERTOFF
+		expr = new Expr_Literal(true, IntrinsicTypeDefs.BOOL);
+#else
+		expr = new Expr_Assert(conditionExpr, messageExpr, block, true).SetDebugInfo(this);
+#endif
+	.) .
+
+//----------------------------
+//---------- Script ----------
+//----------------------------
+	
+// Input is a series of statements.
+// Empty string is a valid Pebble script (it results in no expressions), which I believe is why Pebble is deletable.
+Pebble
+=							(. Expr_ExprList list = null; IExpr _nextExpr = null; .)
+	{ Stat<ref _nextExpr>	(.
+								if (null != _nextExpr) {
+									if (null == _headExpr)
+										_headExpr = _nextExpr;
+									else {
+										if (null == list) {
+											list = new Expr_ExprList(); list.SetDebugInfo(this);
+											list.createScope = false;
+											list.nodes.Add(_headExpr);
+											_headExpr = list;
+										}
+										list.nodes.Add(_nextExpr);
+									}
+									_nextExpr = null;
+								}
+							.) 
+	}.
+
+
+END Pebble.
+

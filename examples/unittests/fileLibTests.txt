@@ -1,0 +1,79 @@
+// *** File::ClearLastError
+{
+	File::ReadLines("!impossiblefilename!");
+	assert(#File::lastError > 0);
+	assert(#File::ClearLastError() > 0);
+	assert(#File::lastError == 0);
+}
+
+
+// *** File::ReadLines
+
+const string filename = "delme.txt";
+
+// * Success
+{
+	string test = "a\nb\nc";
+	File::Write(filename, test);
+	List<string> lines = File::ReadLines(filename);
+	assert("a" == lines[0] && "b" == lines[1] && "c" == lines[2] && 3 == #lines);
+	File::Delete(filename);
+}
+
+// * Empty lines.
+{
+	string test = "a\n\nb\n";
+	File::Write(filename, test);
+	List<string> lines = File::ReadLines(filename);
+	assert("a" == lines[0] && "" == lines[1] && "b" == lines[2] && 3 == #lines);
+	File::Delete(filename);
+}
+
+// * Nearly Empty file
+{
+	string test = " ";
+	File::Write(filename, test);
+	List<string> lines = File::ReadLines(filename);
+	assert(" " == lines[0] && #lines == 1);
+	File::Delete(filename);
+}
+
+// * Empty file
+{
+	string test = "";
+	File::Write(filename, test);
+	List<string> lines = File::ReadLines(filename);
+	assert(#lines == 0);
+	File::Delete(filename);
+}
+
+// * File not found.
+{
+	assert(#File::lastError == 0);
+	List<string> lines = File::ReadLines("!impossiblefilename!");
+	assert(null == lines && #File::lastError > 0);
+}
+
+
+// *** Stream.OpenWriteText and File.ReadLines
+{
+	Stream stream = new;
+
+	stream.OpenWriteText(filename);
+	stream << "Hello,";
+	stream << " world!\n";
+	stream << "Bye!";
+	stream.Close();
+
+	List<string> lines = File::ReadLines(filename);
+	assert(2 == #lines);
+	assert(lines[0] == "Hello, world!");
+	assert(lines[1] == "Bye!");
+
+	File::Delete(filename);
+}
+
+
+// ***
+
+true;

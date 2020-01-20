@@ -1,0 +1,79 @@
+///////////////////////////////////////////////////////////////////////////////
+// Demonstrate all the ways we *can* reference class members.
+class CMA {
+	static num sn = 1;
+	const num n = sn++;
+	const num ninc = n + 1;
+	
+	num F() {
+		n + sn + CMA::sn + SF(100) + CMA::SF(1000);
+	}
+	
+	// Since SF is static, arg n doesn't collide with non-static field n.
+	static num SF(num n) {
+		n + sn + CMA::sn;
+	}
+};
+
+assert(CMA::SF(1000) == 1002);
+
+CMA a = new;
+assert(a.n == 1 && CMA::sn == 2 && a.ninc == 2);
+assert(a.F() == (1 + 2 + 2 + (100 + 2 + 2) + (1000 + 2 + 2)));
+
+a = new;
+assert(a.n == 2 && a.ninc == 3);
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Demonstrate all the ways we *cannot* reference class members.
+
+assert(ScriptError::SymbolNotFound) {
+	class F1 {
+		num n;
+		static num SF() {
+			n;
+		}
+	};
+}
+
+assert(ScriptError::SymbolAlreadyDeclared) {
+	class F2 {
+		num n;
+		num F(num n) {
+			0;
+		}
+	};
+}
+
+assert(ScriptError::ClassMemberNotFound) {
+	class F3 {
+		num n;
+		static num SF() {
+			F3::n;
+		}
+	};
+}
+
+assert(ScriptError::SymbolAlreadyDeclared) {
+	class F4 {
+		static num n;
+		num F(num n) {
+			0;
+		}
+	};
+}
+
+assert(ScriptError::SymbolAlreadyDeclared) {
+	class F5 {
+		static num n;
+		num n;
+	};
+}
+
+assert(ScriptError::SymbolAlreadyDeclared) {
+	class F6 {
+		num n;
+		static num n;
+	};
+}

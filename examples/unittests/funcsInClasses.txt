@@ -1,0 +1,63 @@
+// Tests of function variables and literals in classes and enums.
+
+global num GF(num a) { a + 1; }
+global num GF2(num a) { GF(a) + 1; }
+
+
+// *** Enums
+
+enum<functype<num(num)>> MathOps {
+	F1 = GF,
+	F2 = GF2,
+};
+
+assert(MathOps::F1.value(10) == 11);
+assert(MathOps::F2.value(10) == 12);
+
+
+// *** Class functions
+
+class FuncsInClasses {
+	static num sx = 10;
+	static num SF(num a) { GF(a) + sx; }
+	
+	num x = 100;
+	num F(num a) { GF2(a) + FuncsInClasses::SF(a) + FuncsInClasses::sx + x + 1; }	
+	
+	// Someday this may be possible, but not atm.
+	//functype:A<num(num,num)> aFuncVar = F;
+	
+	functype<num(num)> fv = GF;
+	
+	// Note: Due to an initialization bug, static members 
+	// sometimes initialize to null.
+	static functype<num(num)> sfv = GF;
+};
+
+assert(FuncsInClasses::SF(1000) == 1011);
+
+FuncsInClasses a = new;
+assert(a.F(1000) == 1002 + 1011 + 111);
+assert(a.fv(1) == 2);
+
+a.fv = GF2;
+assert(a.fv(1) == 3);
+
+// Note: we have to initialize sfv here due to a bug in initialization.
+FuncsInClasses::sfv = GF;
+
+assert(FuncsInClasses::sfv(1) == 2);
+FuncsInClasses::sfv = GF2;
+assert(FuncsInClasses::sfv(1) == 3);
+
+FuncsInClasses::sfv = FuncsInClasses::SF;
+assert(FuncsInClasses::sfv(1) == 12);
+
+FuncsInClasses::sfv = null;
+assert(null == FuncsInClasses::sfv);
+
+FuncsInClasses::sfv = FuncsInClasses::SF;
+functype<num(num)> fv = FuncsInClasses::SF;
+assert(fv(1) == 12 && fv == FuncsInClasses::sfv);
+
+true;

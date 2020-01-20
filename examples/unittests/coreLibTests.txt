@@ -1,0 +1,34 @@
+bool logCompileErrors = Debug::SetLogCompileErrors(false);
+{
+	// *** Test Exec and ScriptError
+	
+	// Simple success.
+	ScriptResult<bool> sr = Exec("3*2;");
+	assert(sr.error == ScriptError::NoError && sr.IsSuccess() && sr.value == true);
+
+	// Simple error.
+	sr = Exec("3*2");
+	assert(sr.error == ScriptError::SyntaxError && !sr.IsSuccess() && sr.value == false);
+
+	// Make sure the script actually does something!
+	global num execTestGlobal = 1;
+	sr = Exec("++execTestGlobal;");
+	assert(sr.IsSuccess() && sr.value == true && 2 == execTestGlobal);
+
+	// Exec cannot see non-globals.
+	num execTestLocal = 10;
+	sr = Exec("execTestLocal;");
+	assert(sr.error == ScriptError::SymbolNotFound && !sr.IsSuccess() && sr.value == false);
+
+
+	// *** Test ExecInLine
+
+	sr = ExecInline("++execTestLocal;");
+	assert(11 == execTestLocal && sr.IsSuccess() && sr.value);
+
+	sr = ExecInline("++execTestLocal");
+	assert(11 == execTestLocal && !sr.IsSuccess() && !sr.value);	
+}
+Debug::SetLogCompileErrors(logCompileErrors);
+
+true;

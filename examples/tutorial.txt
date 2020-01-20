@@ -1,0 +1,1338 @@
+/*/////////////////////////////////////////////////////////////////////////////
+					* The Pebble Tutorial *
+				
+   or, "Why write a bunch of boring technical documentation when you 
+               can just show a load of examples?"
+
+//////////////////////////////////////////////////////////////////////////// */
+
+// (Let's start a timer here at the beginning to see how long this file takes to run...)
+Debug::TimerStart();
+
+///////////////////////////////////////////////////////////////////////////////
+// BEFORE WE START...
+{
+	// A couple of quick notes:
+
+	// 1) Comments:
+		// I'm a single line comment.  Works just like most other languages.
+		/* This is a multiline comment.
+			/* Multiline comments nest, which is a bit unusual.*/
+		// Line comments are ignored within multiline comments, so this multiline ending applies -> */
+
+	// 2) assert throw an error if something behaves unexpectedly.They are used throughout this tutorial to prove that the code is doing what we claim it is doing. There is more documentation on assert statements later in the file.
+
+	// 3) Throughout this file, blocks { } are used to group related content together, and to prevent variables declared in those blocks from colliding with variables elsewhere in the file. Here, they are mostly just for keeping things tidy.
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// TYPES and VARIABLES
+{	
+	// * Intrinsic Types
+	{
+		// Pebble has 3 simple intrinsic types:
+
+		// 1) bool 
+		{
+			// bool (boolean) can only be two values: true or false.
+			// The default value is 'false'.
+			bool boolVar;		
+		
+			// Here is every boolean literal:
+			true; 
+			false;
+		}
+
+		// 2) string 
+		{
+			// strings (strings of characters) are text. 
+			// The default is the empty string, "". Unlike many other languages, strings cannot be null.
+			string stringVar;	
+			
+			// String literals only use double quotes, not single quotes.
+			// They support the \n, /t, /", and // escape characters.
+			"So I said, \"Hi!\"";
+			"Here are the boolean literals;\n\ttrue\n\tfalse";
+		}
+
+		// 3) num 
+		{
+			// num (numbers) are internally 64-bit floating point numbers (C# doubles).
+			// The default value is 0.
+			num numVar;			
+
+			// Here are some numeric literals:
+			10.5; 
+			-12; 
+			+0.12;
+			31415927E-7;
+	
+			// Note that Pebble has no way of expressing any of the non-numbers of C#, like Inf and NaN.
+			// Doing something that creates them (ie. "1 / 0") results in a runtime error.
+			// The paradigm in Pebble is to check for bad inputs *before* doing an impossible math operation, rather than after.
+		}
+	}
+	
+	// * Reference types
+	{
+		// Reference types don't directly contain values, but rather references to values. These types can be the value "null".
+	
+		// 1) functions
+		{
+			// Functions have their own types. Functions are described later, but here's a quick example:
+			num MyFunc(string s, bool b) {
+				-10;
+			}
+			functype<num(string, bool)> aFuncVariable = MyFunc;
+		}
+		
+		// 2) classes
+		{
+			// Pebble also has complex types, "classes", which are also described later.
+			// These include the two container types in Pebble, Lists and Dictionaries, which are generic classes.
+		}
+		
+		// Also see the section on typealias, which allow you to supply an alias name for a type.
+	}
+
+	// * Type Conversion and Casting
+	{	
+		// There is no *casting* in Pebble, implicit or explicit, nor is there a way to get the *type* of a value within the language, nor is there a "type" type. 
+		// However, there are a few built-in functions for type *conversion*. These are mostly wrappers around the C# conversion functions.
+		
+		assert(!ToBool(0) && ToBool(1) && ToBool(-1000));
+		assert(!ToBool(null));
+		
+		assert("13" == ToString(13));
+		assert("true" == ToString(true));
+		assert("null" == ToString(null));
+		assert("Hello, World!" == ToString("Hello", ", ", "World!"));
+		
+		assert(0 == ToNum(false));
+		assert(1 == ToNum(true));
+		assert(123 == ToNum("123"));
+		// Note that ToNum throws a runtime error if you feed it something it can't easily convert to a number.
+		assert(ScriptError::ConversionInvalid) { ToNum("f"); }
+
+		// The $ operator is a shorthand version of ToString.
+		assert("true" == $true);
+		assert("true" == $(1 == 1));
+		assert(3 == #$123);	// length (#) of string conversion ($) of 123 is 3, ie. #"123" == 3
+	}		
+
+	// * const
+	{
+		// Variables can be specified as const, meaning they cannot be assigned to after creation.
+		const string thisWillOnlyEverBeTheEmptyString;
+		assert("" == thisWillOnlyEverBeTheEmptyString);
+		assert(ScriptError::AssignToConst) { thisWillOnlyEverBeTheEmptyString = "hi!"; }
+
+		const num cx = 7;
+		assert(ScriptError::AssignToConst) { cx = 6; }
+		
+		// Making a list const means that the list variable cannot be changed, but the contents of the list can!
+		// This applies to any object pointer: lists, dictionaries, or class instances.
+		const List<num> cl = new List<num>;
+		assert(ScriptError::AssignToConst) { cl = null; }
+		cl.Push(42);	// OK! The list is not const, the variable cl is.
+		
+		//const bool constFunc() { false; } // parse error: function literals are implicitly const
+		
+		// Note that there is currently no other use of const. It's pretty limited compared to, for example, C++. 
+		// All of these are errors:
+			// List<const num> lcn;
+			// const bool nogood() { false; }
+			// bool alsonogood(const bool) { false; }
+			// const class ConstClass;
+	}
+
+	// * global
+	{
+		// Variables can also be specified as "global". Global variables are visible *everywhere*, not just within the scope of the current file, block, or function.
+	
+		global num globalNum;
+		
+		// Globals can also be const.
+		global const num theAnswer = 42;
+		
+		// Note: the use of global variables is frowned upon by many programmers of different languages.
+		// However, one of the defining characterists about scripting languages is that you don't have all the code at a single compile time. Therefore, the only way for separate scripts to share data is through global variables or static class members (more on the those later).
+	}
+	
+	// * typealias
+	{
+		// typealiases define new names for types. typealiases are global: once defined they are visible everywhere.
+		
+		// Using a block here to prove the alias is global...
+		{
+			typealias MathFunc = functype<num(num, num)>;
+		}
+		
+		num sub(num a, num b) { a - b; }
+		
+		MathFunc subFunc = sub;
+		assert(1 == subFunc(3, 2));
+	}
+}	
+
+///////////////////////////////////////////////////////////////////////////////
+// EXPRESSION LISTS and VARIABLE SCOPE	
+{
+	// Brackets are used to create expression lists, or "blocks".
+	// Blocks have their own scope, meaning that variables declared in the block do not exist outside the block.  Shadowing is never allowed, meaning that if a variable is in scope in the block, another variable with the same name cannot be created.
+	num outer;
+	{
+		num inner;
+	
+		assert(ScriptError::SymbolAlreadyDeclared) { num outer; }
+	}
+	assert(ScriptError::SymbolNotFound) { inner; }
+
+	// Pebble script files (such as this one) can be thought of as being in their own block, so variables created in that file are not visible anywhere else (unless they are global, of course).
+
+	// One odd thing about expression lists in Pebble is that they have type and value: namely, the type and value of the last expression in the list.
+	// The language syntax prevents you from doing too much with that, but it does mean that when you execute a Pebble file, the return value is the value of the last expression in the file.
+	// It also has an effect on function return values, as we'll see next...
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// FUNCTIONS
+{
+	// Functions are first-order values in Pebble, meaning they are treated like any other variable.
+
+	// * function literals
+	
+		// Creating a function literal should look familiar.
+		// This creates a new const variable named "sum" of type functype<num(num,num)>.
+		num Sum(num a, num b) {
+			return a + b;	
+		}
+
+		// Calling functions uses familiar syntax.
+		Sum(3, 5);
+
+		// Function arguments can be expressions, naturally.
+		Sum(1 * 7, Sum(3, -6));
+
+		// Function literals are const.
+		assert(ScriptError::AssignToConst) { Sum = null; } 
+	
+
+	// * function variables
+	{
+		// Declaring a function *variable* requires syntax that is reminicent of template syntax is C-like languages:
+		// functype<returnType(functionArgType1, functionArgType2, ...)> varName
+		functype<num(num, num)> mathFunc = Sum;
+	
+		// The types that constitute a functype can be anything, including, for example, other function types:
+		functype<bool(functype<num(num,num)>)> funcSetter;
+	}
+	
+	// * return
+	{
+		// We can use "return" statements anywhere within expression lists that comprise the body of functions, but also note that return statements are optional: the value of the last expression in the body will be returned automatically.
+		string BoolToString(bool b) {
+			if (b)
+				return "true";
+			"false";
+		}
+		
+		// It is an error to attempt to use a return statement outside of a function body.
+		assert(ScriptError::ReturnNotInCall) { return; }
+	}
+	
+	// * void
+	{
+		// Functions with "void" return type don't return a value. (Technically they return null.) Thus, you cannot assign their return value to a variable.
+		void VoidFunc() {
+			assert(ScriptError::ReturnValueInVoidFunction) { return true; }
+		
+			"This is not returned!";
+		}
+		assert(ScriptError::TypeMismatch) { string s = VoidFunc(); }
+	}
+	
+	// * recursion
+	{
+		// Function recursion is possible.
+		global num recurseCount = 0;
+		bool recurse(num times) {
+			if (times > 0) {
+				++recurseCount;
+				recurse(times - 1);
+			}
+		}
+		recurse(5);
+		assert(recurseCount == 5);
+		
+		// Beware, though, that recursion can lead to a stack overflow runtime error.
+		bool infiniteLoop() { infiniteLoop(); }
+		assert(ScriptError::StackOverflow) { infiniteLoop(); }
+	}
+	
+	// * closures not supported
+	{
+		// Pebble does NOT have closures. Thus, functions cannot access any outside variables but global variables.
+	
+		num someVar;
+		void F() {
+			assert(ScriptError::SymbolNotFound) { someVar; }
+		}
+	}
+	
+	// * default values
+	{
+		// Function arguments can be given default arguments.
+		string BoolToString(bool b, bool capitalize = false) {
+			if (capitalize)
+				return b ? "TRUE" : "FALSE";
+			b ? "true" : "false";
+		}
+		assert("true" == BoolToString(true) && "true" == BoolToString(true, false));
+		assert("TRUE" == BoolToString(true, true));
+		
+		// Arguments with default arguments cannot be followed by arguments without them.
+		assert(ScriptError::DefaultArgGap) { void BadFunction(num a = 1, num b) { } }
+		
+		// Function *variables* can also be given default arguments.
+		functype<string(bool = true)> btos;
+		string BToS(bool b) {
+			b ? "t" : "f";
+		}
+		btos = BToS;
+		assert("t" == btos());
+		
+		// Function variables can even store function values that have different arguments, so long as the "missing" arguments have default values. In this example, BoolToString's first argument's value  is provided by btos's type's default value, and the second is provided by BoolToString's own default value.
+		btos = BoolToString;
+		assert("true" == btos());
+		
+		// Note that since btos's type only has one argument it can only be passed one argument, despite the fact that it's current value is a function which can take up to 2.
+		assert(ScriptError::ArgCountMismatch) { btos(true, true); }
+		
+		// When both the variable's type and the function literal provide a default value, the literal's takes precedence.
+		functype<string(bool = true, bool = true)> booltostring = BoolToString;
+		assert("true" == booltostring());
+	}
+	
+	// * any
+	{
+		// Some library functions (Pebble functions written in C#, not Pebble) have arguments whose type is defined as "any", meaning they can take arguments of any types. Functions written in Pebble cannot do this.
+		
+		// For example, type conversion functions take a single argument of type "any".
+		assert(ToBool(1) && ToBool(true) && ToBool("true"));
+	}
+	
+	// * variable arguments
+	{
+		// Library functions (Pebble functions written in C#, not Pebble) can have a variable number of arguments. Those functions will take any number of arguments of the same type as the last defined argument. Functions written in Pebble cannot do this.
+		
+		// The most common example of these are the string concatenation functions.
+		assert("true7hello" == ToString(true, 7, "hello"));
+	}
+}
+	
+///////////////////////////////////////////////////////////////////////////
+// OPERATORS
+{
+	// * Assignment operators: =, +=, -=, *=, /=, ..=
+	{
+		// Plain old assignment.
+		num xx;
+		xx = 3;
+		
+		// Assignment combined with math operators.
+		xx -= 6;
+		assert(xx == -3);
+		xx += 6;
+		assert(xx == 3);
+		xx *= 3;
+		assert(xx == 9);
+		xx /= 9;
+		assert(xx == 1);
+	
+		// .. is the string concatenation operator, so ..= is what you use for strings, not +=
+		string ss = "h";
+		ss ..= "i";
+		assert("hi" == ss);
+	}
+	
+	// * Comparison operators: ==, !=, ~=
+	{
+		// == is the basic comparison operator and only works on similar types.
+		num xx = 7;
+		assert(7 == xx);
+		string s = "hello";
+		assert("hello" == s);
+		assert(ScriptError::TypeMismatch) { s == xx; }
+	
+		// != is the inequality operator, and also only works on similar types.
+		assert(6 != xx);
+		assert("HELLO" != s);
+		assert(ScriptError::TypeMismatch) { s != xx; }
+		
+		// For strings, == is case sensitive. There is also a case insensitive comparator: ~=.
+		assert("HELLO" ~= s);
+	
+		// Note that const has no impact on comparison.
+		num r = 1;
+		const num cr = 1;
+		assert(r == cr);
+		assert(cr == r);
+	
+		// ** Object comparison (== or !=)
+		{
+			// Object comparison only returns whether or not they are the same object instance, not that they are otherwise equivalent in any other way.
+		
+			List<num> list1 = new List<num>;
+			List<num> list2 = new List<num>;
+			assert(list1 == list1);
+			assert(list1 != list2);
+			List<num> list1ptr = list1;
+			assert(list1 == list1ptr);			// Different variables, but same instance.
+			
+			// Can compare class types when one type is the parent of another.
+			class A;
+			class B : A;
+			class C : A;
+			
+			B b = new B;
+			A a = b;
+			C c;
+			assert(a == b);
+			assert(b == a);
+			// Cannot compare c and b because they could never point to the same object.
+			assert(ScriptError::TypeMismatch) { c == b; }
+			
+			class D;
+			D d;
+			// Cannot compare d and a because they could never point to the same object.
+			assert(ScriptError::TypeMismatch) { d == a; }
+		}
+	}
+
+	// * Math operators.
+	{
+		// * Sign operators (+ and -)
+		num neg = -4;
+		assert(neg == -4);
+		neg = +neg; 
+		assert(neg == -4);
+		neg = -neg;
+		assert(neg == 4);
+		neg = +neg; 
+		assert(neg == 4);
+		neg = -neg;
+		assert(neg == -4);
+		
+		// * Comparators
+		assert(3 < 4);
+		assert(4 > 3);
+		assert(3 <= 3);
+		assert(3 >= 3);
+		assert(3 == 3);
+		assert(3 == 3);
+		assert(3 != 2);
+		
+		// * Arithmetic operators (+, -, *, /, %)
+		assert(6 + 4 == 10);
+		assert(6 - 4 == 2);
+		assert(6 * 4 == 24);
+		assert(6 / 4 == 1.5);
+		assert(6 % 4 == 2);		// % is the modulo operator
+		
+		// * Precedence: *, /, and % group before + and -, and they all group before comparators.
+		assert(6 * 2 + 1 == 13);
+		assert(6 + 1 * 2 == 8);
+		
+		// * Increment (++) and decrement (--), pre and post.
+		{
+			num xx = 5;
+			++xx;
+			assert(xx == 6);
+			--xx;
+			assert(xx == 5);
+
+			assert(xx++ == 5);
+			assert(xx == 6);
+			assert(xx-- == 6);
+			assert(xx == 5);
+		}
+	}
+	
+	// * Boolean operators: !, ==, !=, ||, &&, and ?:
+	{
+		// ! is logical NOT.
+		bool bb = true;
+		bb = !bb;
+		assert(bb == false);
+		assert(!bb);
+
+		// && is logical AND.
+		assert(true && true);
+		assert(!(true && false));
+		assert(!(false && false));
+		
+		// || is logical OR (inclusive).
+		assert(true || false);
+		assert(!(false || false));
+	}
+	
+	// * String operators: .. and #.
+	{
+		// .. is the string concatenation operator (borrowed from Lua).  (+ only works on numbers.)
+		assert("Hello, world!" == ("Hello, ".."world!"));	
+		
+		// # returns the length of the string that follows it.
+		assert(2 == #"hi");		
+	}
+
+	// * Conditional operator (aka "ternary")
+	{
+		assert(5 == (true ? 5 : 7));
+		assert(7 == (false ? 5 : 7));
+
+		// The type of a conditional expression is most common type of types of the true and false expressions.
+		B bChildOfA = new B;
+		C cChildOfA = new C;		
+		A aIsCommonAncestorOfAAndB = true ? bChildOfA : cChildOfA;
+	}
+	
+	// * The rest: [], '.', ::, #, $, and <-.
+	{
+		// [] is the index operator, and *only* works on Lists and Dictionaries.
+		Dictionary<string, num> dsn = new { Add("A", 10).Add("B", 20); };
+		assert(dsn["B"] == 20);
+		
+		// :: is the scope resolution operator, used for referencing static class members, super class functions, or global variables.
+		global num HP = 100;
+		class Player {
+			static num staticHP = 9;
+			num HP = 50;
+			num F() {
+				HP - ::HP;		// HP is the class member. scope operator when no prefixed scope specifies global variables.
+			}
+		};
+		Player player = new;
+		assert(9 == Player::staticHP);
+		
+		// . is the reference operator, used for referencing non-static class members.
+		assert(-50 == player.F());
+		
+		// # returns the length of the following string, List, or Dictionary.
+		assert(2 == #dsn);
+		
+		// <- is the deserialization operator. More on that below.
+		num n <- "2*3;";
+		assert(6 == n);
+		
+		// $ is the string-ize operator. It converts whatever is to the right to a string.
+		// It is just a shorthand way of calling ToString on something.
+		assert("6" == $n);
+		assert("true"== $true);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
+// STATEMENTS
+{
+	// Note that some statements (like for example "typealias") are documented in other sections.
+
+	// * if : conditional execution.
+	{
+		// If should look familiar. The condition expression can *only* be boolean. No if (0) like C++.
+		num ifcheck;
+		if (true) {
+			ifcheck = 1;
+		} 
+		assert(ifcheck == 1);
+		
+		if (false) {
+			ifcheck = 2;
+		} else {
+			ifcheck = 3;
+		} 
+		assert(ifcheck == 3);
+		
+		// Don't technically need the braces if there is only one expression in the block.
+		if (true)
+			ifcheck = 4;
+		else
+			ifcheck = 5;
+		
+		assert(ifcheck == 4);
+		
+		// The blocks are like any other blocks and have their own scope.
+		if (true) {
+			num ifblockscopeonly;
+		} 
+		assert(ScriptError::SymbolNotFound) { ifblockscopeonly; }
+	}
+	
+	// * for : loops.
+	{
+		// Pebble's for syntax is a little different.  You must give it a symbol name to be the numeric iterator.  This iterator is const: it cannot be modified in the loop.  Both the start, end, and loop expressions are evaluated only once at the beginning of the loop. It is not an error if end < for, the loop just iterates 0 times.  Thus, there is no way for a Pebble for statement to infinite loop.
+		
+		// The syntax is for ((iterator) = (start), (end)[, (step)]). Default step is 1.
+		// The end is inclusive, so for example for (it = 1, 2) loops 2 times.
+		num forCheck = 0;
+		for (it = 1, 3, 2) {
+			forCheck += it;
+			assert(ScriptError::AssignToConst) {--it; } 
+		}
+		assert(forCheck == 1 + 3);
+		// Iterators only exist within the scope of their for loops.
+		assert(ScriptError::SymbolNotFound) { it; } 
+		
+		// continue works as expected.
+		forCheck = 0;
+		for (it = -1, -3, -1) {
+			if (it % 2 == 0)
+				continue;
+			forCheck += it;
+		}
+		assert(forCheck == -4);
+
+		// same as break
+		forCheck = 0;
+		for (i = 1, 3) {
+			if (i % 2 == 0)
+				break;
+			forCheck += i;
+		}
+		assert(forCheck == 1);
+	}
+	
+	// * foreach : iterates through the elements of lists and dictionaries.
+	{
+		List<num> ln = new { Add(10).Add(20).Add(30); };
+		
+		// "index" here will be the num index of that list element. 
+		// foreach runs in order on lists, from 0 to Count() - 1.
+		num listSum = 0;
+		foreach (index, value in ln) {
+			listSum += index * value;
+		}
+		assert((0 * 10 + 1 * 20 + 2 * 30) == listSum);
+		
+		Dictionary<string, num> dsn = new { Add("Bob", 10).Add("Alice", 20); };
+		
+		// type of key is whatever the key type of the dictionary is. In this case, string.
+		// type of value is whatever the value type of the dictionary is. In this case, number.
+		// These names can be whatever you want, but the types are absolutely determined by the Dictionary used.
+		string twenty;
+		foreach (key, value in dsn) {
+			if (20 == value) {
+				twenty = key;
+				break;
+			}
+		}
+		assert("Alice" == twenty);
+	}
+	
+	// * assert : sanity test.
+	{
+		// assert is to help users to create sanity tests for their code. asserts throw an error if something is not as expected.
+		// Note: asserts can be disabled by compiling with PEBBLE_ASSERTOFF defined, in which case the assert and everything in it just compiles to the boolean value "true".
+	
+		// The assert statement has several forms.
+		
+		// 1) When there is no block following the parentheses, assert evaluates the expression in the first argument. If it evaluates to true, it does nothing more. If it is false, it throws a runtime exception.
+		assert(1 + 1 == 2);
+		
+		// If an optional string second argument is supplied it will be appended to the runtime exception.
+		assert(2 + 2 == 4, "Oops, math isn't real!");
+	
+		// 2) When there is a following block, assert compares the result of the expression in the parentheses with the result of the expression in the block. If they are not equal, it throws an exception. 
+		assert(2) { 1 + 1; }
+		
+		// Can also have a message argument in this form.
+		assert(4, "Oops, math still doesn't work!") { 2 + 2; }
+	
+		// 3) assert can also check for parse or runtime errors, like so:
+		assert(ScriptError::Any) { nxhunxhenutnsdind = true; }
+		assert(ScriptError::NumberInvalid, "Whoops, I was able to divide by zero!") { 1 / 0; }
+		// Note that assert cannot check for syntax errors. If there is a syntax error in the assert statement the enclosing script will fail to compile.
+		
+		// Note: ScriptError is an enum. You can see a list of its values, for example, by doing this: 
+		//Print(Debug::DumpClass("ScriptError"));
+		
+		// ** callback
+		{
+			// You can specify a function to be called when an assert expression runs.
+			// The first argument is the true/false result of the assert, the 2nd is the assert message if it failed.
+			// If the callback returns false, an assert runtime exception is thrown.
+			
+			global num totalAsserts;
+			global List<string> failedAsserts = new;
+			bool MyAssertCallback(bool success, string message) {
+				++totalAsserts;
+				if (!success)
+					failedAsserts.Add(message);
+				true;
+			}
+			
+			Debug::SetAssertCallback(MyAssertCallback);
+			assert(false, "A");
+			assert(true, "B");
+			Debug::SetAssertCallback(null);
+			
+			assert(2 == totalAsserts && 1 == #failedAsserts && "A" == failedAsserts[0]);
+		}
+	}
+	
+	// * catch : error trapping
+	{
+		// catch wraps a block of Pebble code and returns a ScriptResult whose generic type is the type of the block. If a runtime error happens in the block, the ScriptResult will indicate an error. If there is no error, status will be = 0 and the Result's value will be the value of the block.
+		// Note that catch cannot catch syntax errors. Syntax errors will cause the entire script to fail to compile.
+
+		/* ScriptResult's definition looks like this:
+		class ScriptResult<T> {
+			T value;
+			ScriptError error;
+			string message;
+			bool IsSuccess(); // returns true iff error == ScriptResult::NoError
+		}; */
+	
+		{
+			ScriptResult<num> rn = catch {
+				1 / 0;
+			};
+			assert(rn.error != ScriptError::NoError);
+			
+			rn = catch {
+				1 / 1;
+			};
+			assert(rn.error == ScriptError::NoError && rn.value == 1);
+		}
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+// CLASSES
+{
+	// * Class definition
+	{
+		// Making a new class can be as  simple as this:
+		class Trivial;
+		
+		// Deriving should look familiar. 
+		class TrivialChild : Trivial;
+
+		// A non-trivial class will have members.
+		// Note: There is no member access protection (public, private, etc) in any form in Pebble.
+		class Point {
+			num x;
+			num y;
+			num Length() {
+				Math::Sqrt(x*x + y*y);
+			}
+		};	
+		
+		// The scope that a class declaration occurs in is irrelevant. All class types are global.
+		// This class was declared within a block, but it's still global.
+		{
+			class ImGlobal;
+		}
+		ImGlobal ig;
+	}
+	
+	// * new 
+	{
+		// The "new" operator instantiates instances of classes.
+		Point pt = new Point;
+		pt.x = 3;
+		pt.y = 4;
+		assert(5 == pt.Length());
+	
+		// In the cases of variable declaration and assignment, the class name is optional for the new operator.
+		// If left off, it will new a new instance of the variable on the left side of the =.
+		Point pt2 = new;
+		assert(0 == pt2.Length());
+
+		// "new"s can have initializers. Initializers are like argument-less functions
+		// that are called in the new instance's scope after the object is 
+		// instantiated. Initializers are called after constructors.
+		Point pt3 = new {
+			x = 3;
+			y = 4;
+		};
+		assert(5 == pt3.Length());
+	}
+	
+	// * constructors
+	{
+		// Constructors are designated by the special keyword "constructor". There can be at most only one constructor, and it can take no arguments.
+		// Constructors are called in inheritance order, and if there is an initializer it is called after any constructors. In this case, Point's constructor, if it existed, would be called before UnitPoint's.
+		class UnitPoint : Point {
+			string name = "UnitPoint";
+			
+			constructor {
+				x = 1;
+				y = 0;
+				Print("New ", name, " created!");
+			}
+		};
+
+		// Because constructors have no arguments, parentheses are not required when instantiating. Thus, it's a syntax error to use them.
+		
+		//Point pt = new Point(); <- syntax error
+	}
+	
+	// * override
+	{
+		// Members functions can be overridden by using the "override" keyword.
+		class Point3 : Point {
+			num z;
+			override num Length() {
+				Math::Sqrt(x*x + y*y + z*z);
+			}
+		};
+		
+		{
+			Point3 pt3 = new {
+				x = 0;
+				y = 0;
+				z = 5;
+			};
+			assert(5 == pt3.Length());
+		}
+		
+		// Parent class versions of functions can be referenced by using the :: operator.
+		class WeirdPoint3 : Point3 {
+			override num Length() {
+				-Point::Length();
+			}
+		};
+
+		{	
+			WeirdPoint3 wp3 = new {
+				x = 0;
+				y = 2;
+				z = 1000;
+			};
+			assert(-2 == wp3.Length());
+		}
+	}
+	
+	// * Member initialization
+	{
+		// Class member initializers can be any type of expression, though they only have access to global symbols.
+	
+		global num someGlobal = 4;
+		global num numfunc() { 3; }
+		
+		class InitDemo {
+			num literal = 1;
+			num expr = 1 + 1;
+			num functionCall = numfunc();
+			num glob = someGlobal;
+			List<num> newExpr = new List<num>;
+		};
+		
+		InitDemo initDemo = new InitDemo;
+		
+		assert(1 == initDemo.literal);
+		assert(2 == initDemo.expr);
+		assert(3 == initDemo.functionCall);
+		assert(4 == initDemo.glob);
+		assert(0 == initDemo.newExpr.Count());
+	}
+	
+	// * Special member functions 
+	{
+		// User-created classes may optionally provide implementations of these functions. If a user-created class has a function with one of these names, the signature MUST match the given signature exactly.
+	
+		// ** string ThisToString()
+		{
+			// A class can override the default way the various ToString functions work by providing a ThisToString implementation.
+			class Vector {
+				num x;
+				num y;
+				
+				string ThisToString() {
+					ToString("<", x, ", ", y, ">");
+				}
+			};
+			
+			Vector v = new { x = 3; y = 4; };
+			assert("<3, 4>" == ToString(v));
+		}
+		
+		// ** string ThisToScript(string prefix)
+		{
+			// Classes may provide an implementation of ThisToScript to customize how they are serialized as text. Note that this implementation is, unlike Serialize for binary, NOT required. See the section on serialization for more info.
+		}
+		
+		// ** bool Serialize(Stream stream)
+		{
+			// In order to be able to be serialized binarily, a class *must* provide a Serialize implementation. See the section on serialization for more info.
+		}
+	}
+	
+	
+	// * Statics
+	{
+		// Pebble supports static class variables and functions.
+		// static may *only* apply to class members.
+		class Statics {
+			static num sx = -1;
+			num x = 2;
+			
+			// Static functions do not need to use scope operator to lookup statics in the same class.
+			static num GetX() { sx; }
+			
+			// Non-static function bodies must use scope operator to lookup statics.
+			num GetXX() { Statics::sx * x; }
+			
+			// Can initialize non-statics with statics, but must use scope operator.
+			num y = Statics::sx;
+			
+			// Cannot initialize statics with non-statics.
+			//static num sy = y;  // error: y not found.
+			
+			// Statics can be const.
+			const static num scy = 3;
+		};
+		
+		Statics statics = new;
+		assert(-1 == statics.y);
+		
+		// const class members are not static by default, like they are in some other languages. This allows each instance of a class to initialize the const to a unique value. Essentially, const just means "read-only".
+		class Widget {
+			static num nextId = 0;
+			const num id = nextId++;
+		};
+		
+		Widget w = new;
+		assert(w.id == 0);
+		w = new;
+		assert(w.id == 1);
+	}
+	
+	// * Classes and func variables.
+	{
+		// When a function literal is defined in a class its type says "I am part of this class." (In error messages, Length's type looks like this: functype:Point<num()>, though that is actually invalid syntax--users can't do that.)  Because of this, we must be careful when attempting to store them in function variables.
+		// ONLY non-static function literals get this added type information.
+		class FuncVars {
+			num F() { 1; }										// functype:FuncVars<num()>
+			static num SF() { 10; }								// functype<num()>
+			functype<num()> funcvar = FuncVars::SF;				// functype<num()>
+			static functype<num()> sfuncvar = FuncVars::SF;		// functype<num()>
+		};
+	
+		FuncVars f = new;
+		functype<num()> funcvar;
+	
+		// functype:FuncVars<num()> != functype<num()>
+		assert(ScriptError::TypeMismatch) { funcvar = f.F; }
+	
+		// The type of static function literals, however, does NOT include the class.
+		funcvar = FuncVars::SF;
+		assert(funcvar() == 10);
+	}
+	
+	// * Sealed
+	{
+		// Sealed classes cannot be derived from. That's it.
+		sealed class SealedClass;
+		assert(ScriptError::ClassParentSealed) { class ChildOfSealedClass : SealedClass; }
+	}
+
+	// * Uninstantiable
+	{
+		// Uninstantiable classes cannot be instantiated. That's it. If you have a class that's only statics, you can throw this on there to insure nobody mistakenly makes an instance.
+		uninstantiable class UninstantiableClass;
+		assert(ScriptError::ClassUninstantiable) { new UninstantiableClass; }
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
+// GENERICS: List, Dictionary, Result, and ScriptResult
+{
+	// Pebble has two built in containers, List<V> and Dictionary<K, V>.  These are essentially wrappers for the C# containers of the same name.  
+	
+	// * Generics
+	{
+		// A generic class is one which has properties whose type can be changed. All Pebble generics are coded in C#, as there is no way to create them in Pebble. There are currently only 3 generic classes: List, Dictionary, and Result, and ScriptResult.
+		
+		// Note that you cannot use a generic class as a parent class.
+	}
+
+	// * List<T>
+	{
+		// Lists are...lists. Lists of values. They wrap C#'s List<T>.
+		// For a full list of List's member functions, see doc/LibDocs.txt.
+	
+		List<num> numList = new List<num>;
+
+		// Add/Push, Remove, Pop, Clear, Get, Set, Count, and [] operator
+		numList.Add(10);
+		assert(numList.Get(0) == 10);
+		numList.Push(20);
+		assert(numList[1] == 20);
+		assert(numList.Count() == 2);
+		assert(numList.Pop() == 20);
+		assert(numList.Count() == 1);
+		numList.Set(0, 100);
+		assert(100 == numList[0]);
+		numList[0] = 1000;
+		assert(1000 == numList[0]);
+		assert(numList.Clear().Count() == 0);
+		
+		// sort takes a function of type functype<num(T, T)>
+		numList.Add(5, 2, 3, 1, 4);
+		num sortFunc(num l, num r) {
+			l - r;
+		}
+		numList.Sort(sortFunc);
+		assert(numList[0] == 1 && numList[1] == 2 && numList[2] == 3 && numList[3] == 4 && numList[4] == 5);
+		
+		// Lists can be iterated over using for loops or foreach loops.
+		for (i = 0, numList.Count() - 1) {
+			assert(i == numList[i] - 1);
+		}
+		
+		// In this example, i has type num and holds the index of the element, while v has type num and holds the value of the element.
+		foreach (i, v in numList) {
+			assert(i == v - 1);
+		}
+		
+		// Note: The Add/Push, Clear, Insert, Pop, RemoveAt, and RemoveRange List member functions cannot be called within a foreach loop, because they can modify the length of the List.
+	}
+
+	// * Dictionary<K, V>
+	{
+		// Dictionaries are collections that map keys (the first generic type) to values (the second generic type). Pebble's Dictionaries wrap C#'s Dictionary<K, V>. Only one element in a dictionary can have a given key, but many can have the same value.
+		// For a full list of Dictionary's member functions, see doc/LibDocs.txt.
+	
+		Dictionary<string, num> dic = new Dictionary<string, num>;
+		
+		// Add, Remove, Clear, Get, Set, Count, index operator []
+		assert(dic.Count() == 0);
+		dic.Add("one", 1);
+		dic.Add("two", 2);
+		dic.Add("three", 3);
+		assert(2 == dic["two"]); 
+		assert(3 == dic.Count());
+		assert(2 == dic.Get("two"));
+		assert(dic.Get("one") == 1);
+		assert(dic.Remove("three").Count() == 2);
+		assert(0 == dic.Clear().Count());
+
+		// Note that template types aren't as polymorphic as they may be in other languages. Even though every B is an A, Pebble still doesn't allow this:
+		assert(ScriptError::TypeMismatch) { List<A> listA = new List<B>; }
+		
+		// To iterate through the elements of a dictionary, use the foreach operator. Unlike List, Dictionary has no sequence so it cannot be iterated over with a for loop. The first symbol in the expression holds the key, the second the value. The types are implied from the key/value types of the dictionary.
+		dic.Add("1", 1);
+		dic.Add("2", 2);
+		foreach(k, v in dic) {
+			assert(k == ToString(v));
+		}
+		
+		// Note: The Add, Clear, and Remove Dictionary member functions cannot be called within a foreach loop, because they can modify the number of elements in the Dictionary.
+	}
+	
+	// * Result
+	{
+		// This is a simple built-in generic class that was created for users that needed a generic class that could represent either a successful value or an error code. Pebble itself doesn't use it anywhere, it's just for users.
+		// (It's not really a container but there wasn't a better place in this file to put it.)
+	
+		/* Result's definition looks like this:
+		class Result<T> {
+			// By convention, value is undefined in the event of an error.
+			T value;
+			// By convention, 0 means "no error", and anything else is an error code.
+			num status;			
+			// By convention, contains an error message in the event of an error, undefined if success.
+			string message;		
+	
+			bool IsSuccess() { 0 == status; }
+		}; */
+		
+		Result<num> SafeDivision(num a, num b) {
+			Result<num> result = new;
+			if (0 == b) {
+				result.status = -1;
+				result.message = "Divide by zero!";
+			} else {
+				result.value = a/b;
+				result.status = 0;
+			}
+			result;
+		}
+		
+		Result<num> okStatus = SafeDivision(3, 1);
+		Result<num> failStatus = SafeDivision(3, 0);
+		assert(okStatus.IsSuccess() && 0 == okStatus.status && 3 == okStatus.value);
+		assert(!failStatus.IsSuccess() && 0 != failStatus.status && "" != failStatus.message);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
+// ENUMS
+{
+	// enums are custom datatypes whose only acceptable values are defined by the user at time of creation.
+	// Note: enums, like classes, are always global.
+
+	enum<num> Planet {
+		Mercury = 1,
+		Venus,
+		Earth,
+		Mars,
+		Jupiter,
+		Saturn,
+		Uranus,
+		Neptune,
+	};
+
+	Planet planet = Planet::Jupiter;
+	
+	// Each enum value has two read-only fields.
+	// 1) The name, which is the same as the symbol.
+	assert("Mars" == Planet::Mars.name);
+	
+	// 2) The "value", which is where the user can specify any data they like to be associated with the enum value.
+	assert(3 == Planet::Earth.value);
+	
+	// The default values of enum<num> start at 0 and increment by one each value. The default value of enum<string> is just the name. The default values of enums with any other type is just the default value of that type.
+
+	// These payload values do not have to be unique. Pebble doesn't care about them at all. They are only there should the user have anything they want to do with them.
+
+	// Here's an example of an enum with function values, to illustrate how fancy that is:
+	{
+		num AddFunc(num a, num b) { a + b; }
+		num SubFunc(num a, num b) { a - b; }
+
+		enum<MathFunc> MathOps {
+			Add = AddFunc,
+			Sub = SubFunc,
+		};
+
+		assert(MathOps::Add.value(3, 2) == MathOps::Sub.value(9, 4));
+	}
+}
+
+	
+///////////////////////////////////////////////////////////////////////////////
+// SERIALIZATION
+{
+	// Pebble has two totally different system for serialization (ie., saving values to files).
+	
+	// 1) Text serialization saves values to scripts which, when run, return the original values. It is very easy to use, very easy to debug, very inefficient, and extremely insecure--Pebble does no checking on the content of those scripts, so they could be trivially manipulated by a bad actor to do almost anything.
+	
+	// 2) Binary serialization saves values in a binary format. It is more work to use, but is much more powerful, creates much smaller files, and vastly more secure. (Adept users can change the values, but they cannot insert new code to the binary files.)
+
+	// * Text Serialization
+	{
+		// <- is the ScriptToValue operator. It evaluates a pebble script and returns the resultant value.
+		// There are actually two things that can be on the left:
+		// 1) If you are pretty certain the script is OK or you don't care if it isn't, you can assign it directly to a value. If the script has any problems, it is a runtime error, meaning the script containing the <- halts!
+		// It is a runtime error if the type of the value doesn't match the type of the variable.
+		{
+			num n <- "2*3;";
+			assert(n == 6);
+			bool b <- "true;";
+			assert(b);
+			
+			assert(ScriptError::DeserializeTypeMismatch) { string s <- "3;"; }
+			// Divide by zero error.
+			assert(ScriptError::NumberInvalid) { num divbyzero <- "3/0;"; }
+		}
+		
+		// 2) If you want to be able to recover from an error, then put a ScriptResult<T> on the left.
+		{
+			// Forgot semicolon...
+			ScriptResult<num> nr <- "2*3";	
+			assert(!nr.IsSuccess());
+			
+			nr <- "2*3;";
+			assert(nr.IsSuccess() && nr.value == 6);
+		}
+	
+		// Aside: if you just want to run a script and don't need its return value at all, you can use the Exec function.
+	
+		// The ToScript function takes a Pebble value and converts it to a script which, when run, recreates the original value.
+		{
+			string bstr = ToScript(true);
+			assert("true;" == bstr);
+			bool b <- bstr;
+			assert(b == true);
+			
+			string sstr = ToScript("hello");
+			assert("\"hello\";" == sstr);
+			string s <- sstr;
+			assert(s == "hello");
+		}
+	
+		// Note that pebble functions cannot be serialized. (Technically they serialize to an empty string, but I'd consider it undefined behavior.)
+		// Also note that static or const class members are not serialized.
+	
+		// One handy use of serialization is to save a bunch of associated data.
+		// It's probably better to have a class or a few classes store global data rather than have a bunch of global variables.
+		{
+			// Create a class.
+			class GameData {
+				string playerName;
+				num playerHP;
+				Dictionary<string, num> inventory;
+				List<string> equippedItems;
+				string lastMap;
+			};
+			
+			global GameData gameData = new {
+				playerName = "Grognar";
+				playerHP = 100;
+				inventory = new {
+					Add("Torch", 3);
+					Add("Rope", 1);
+				};
+				equippedItems = new {
+					Add("Rusty Sword");
+					Add("Magic Ring");
+				};
+				lastMap = "Dark Forest";
+			};
+			
+			string strGameData = ToScript(gameData);
+			gameData = null;
+			
+			// Save to disc, load from disc, etc...
+			gameData <- strGameData;
+			assert(1 == gameData.inventory["Rope"]);
+		}
+
+		// The default text serialization of class instances merely saves all fields. Users can override this by implementing a ThisToScript function. The prefix argument is merely for formatting. It can be ignored but utilizing it makes your saved scripts look prettier.
+		{
+			class CustomTextSerialization {
+				string s;
+				Dictionary<string, num> ignored;
+				
+				string ThisToScript(string prefix) {
+					string result = prefix.."new CustomTextSerialization{\n";
+					result ..= prefix.."  s = \""..s.."\";\n";
+					result ..= prefix.."};\n";
+					return result;
+				}
+			};
+			
+			CustomTextSerialization cts = new {
+				s = "Hi!";
+				ignored = new;
+			};
+			
+			string ctsScript = ToScript(cts);
+			CustomTextSerialization cts2 <- ctsScript;
+			assert("Hi!" == cts2.s && null == cts2.ignored);
+		}
+	}
+	
+	// * Binary Serialization
+		// Binary serialization saves values to files as binary data. This method produces much smaller files, and they are much harder for users to tinker with.
+		// Both reading and writing happen using the Stream class and the stream (<<) operator. Values must be read in the exact same order they were written. Not doing so will result in messed up data at best, or a runtime exception at worst.
+
+	{
+		string ssav = "hello";
+		num nsav = 100;
+	
+		Stream stream = new;
+		stream.OpenWriteBinary("deleteme.bin");
+		stream << "hello";
+		stream << 100;
+		stream.Close();
+		
+		string sloaded;
+		num nloaded;
+		
+		stream.OpenReadBinary("deleteme.bin");
+		stream << sloaded;
+		stream << nloaded;
+		stream.Close();
+		
+		assert("hello" == sloaded && 100 == nloaded);
+	}
+	
+	// In order to binary serialize class instances, the class MUST implement a Serialize function with this exact signature:
+	{
+		class BinSerClass {
+			num n;
+			List<num> ln;
+			bool ignored;
+		
+			// Return true if successful. Return false to have the calling << throw an exception.
+			bool Serialize(Stream stream) {
+				stream << ln;
+				stream << n;			
+				true;
+			}
+		};
+	
+		BinSerClass bsc = new {
+			n = 75;
+			ln = new { 
+				Add(10).Add(20).Add(30);
+			};
+			ignored = true;
+		};
+	
+		Stream stream = new;
+		stream.OpenWriteBinary("deleteme.bin");
+		stream << bsc;
+		stream.Close();
+		
+		BinSerClass bsc2;
+		
+		stream.OpenReadBinary("deleteme.bin");
+		stream << bsc2;
+		stream.Close();
+		
+		assert (bsc.n == bsc2.n && 
+				#bsc.ln == #bsc2.ln &&
+				bsc.ln[0] == bsc2.ln[0] && 
+				bsc.ln[1] == bsc2.ln[1] &&
+				bsc.ln[2] == bsc2.ln[2] &&
+				bsc.ignored != bsc2.ignored);
+	}
+	
+	// The power of this approach is that unlike text serialization you can handle changes to the serialized classes.
+	{
+		class PlayerRecord {
+			const num version = 2;
+			num hitpoints; 	// Present in version 1.
+			num xp;			// Added in version 2.
+			
+			bool Serialize(Stream stream) {
+				if (stream.IsWriting()) {
+					stream << version;
+					stream << hitpoints;
+					stream << xp;
+				} else {
+					num savedVersion;
+					stream << savedVersion;
+					if (savedVersion > 2) {
+						Print("Saved PlayerRecord has newer version than this code can read!");
+						return false;
+					}
+					
+					stream << hitpoints;
+					if (savedVersion >= 2)
+						stream << xp;
+				}
+				
+				true;
+			}
+		};
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+// BUILT-IN LIBRARIES
+// The documentation for all libraries is in /doc/LibDocs.txt
+
+
+///////////////////////////////////////////////////////////////////////////
+// THE END
+
+// Finally, remember that the value of any expression list is the value of the last expression. Hence, the return value of this tutorial is the string returned by this ToString:
+ToString("SUCCESS! Tutorial ran in ", Debug::TimerGet(), "ms.");

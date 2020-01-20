@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26430.16
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pebble", "pebble.csproj", "{3105ECD8-65AF-4040-94E5-E40CE4501017}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{460834B4-2B76-484D-82B8-F1DF8DF841F6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3105ECD8-65AF-4040-94E5-E40CE4501017}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3105ECD8-65AF-4040-94E5-E40CE4501017}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3105ECD8-65AF-4040-94E5-E40CE4501017}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3105ECD8-65AF-4040-94E5-E40CE4501017}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
+EndGlobal
