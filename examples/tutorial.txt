@@ -602,31 +602,57 @@ Debug::TimerStart();
 		assert(forCheck == 1);
 	}
 	
-	// * foreach : iterates through the elements of lists and dictionaries.
+	// * foreach : iterates through the elements of lists and dictionaries, or enum values.
 	{
-		List<num> ln = new { Add(10).Add(20).Add(30); };
-		
-		// "index" here will be the num index of that list element. 
-		// foreach runs in order on lists, from 0 to Count() - 1.
-		num listSum = 0;
-		foreach (index, value in ln) {
-			listSum += index * value;
-		}
-		assert((0 * 10 + 1 * 20 + 2 * 30) == listSum);
-		
-		Dictionary<string, num> dsn = new { Add("Bob", 10).Add("Alice", 20); };
-		
-		// type of key is whatever the key type of the dictionary is. In this case, string.
-		// type of value is whatever the value type of the dictionary is. In this case, number.
-		// These names can be whatever you want, but the types are absolutely determined by the Dictionary used.
-		string twenty;
-		foreach (key, value in dsn) {
-			if (20 == value) {
-				twenty = key;
-				break;
+		// ** List
+		{
+			List<num> ln = new { Add(10).Add(20).Add(30); };
+			
+			// "index" here will be the num index of that list element. 
+			// "value" will be the value of the list at that index. 
+			// foreach runs in order on lists, from 0 to Count() - 1.
+			num listSum = 0;
+			foreach (index, value in ln) {
+				listSum += index * value;
 			}
+			assert((0 * 10 + 1 * 20 + 2 * 30) == listSum);
 		}
-		assert("Alice" == twenty);
+		
+		// ** Dictionary
+		{
+			Dictionary<string, num> dsn = new { Add("Bob", 10).Add("Alice", 20); };
+			
+			// The type of "key" is whatever the key type of the dictionary is. In this case, string.
+			// The type of "value" is whatever the value type of the dictionary is. In this case, number.
+			// These names can be whatever you want, but the types are always determined by the specific Dictionary used.
+			string twenty;
+			foreach (key, value in dsn) {
+				if (20 == value) {
+					twenty = key;
+					break;
+				}
+			}
+			assert("Alice" == twenty);
+		}
+		
+		// ** enum<T>
+		{ 
+			// foreach can also iterate over the values of an enum.
+			enum<string> GalileanMoons {
+				Io,
+				Europa,
+				Ganymede,
+				Callisto
+			};
+			
+			// Note here that unline the other forms of foreach, "GalileanMoons" is a type, not a value. enums are the only types that foreach can iterate over.
+			// "ix" here is the numeric index of the enum value, and "moon" is the GallileanMoon value at that index.
+			string summary;
+			foreach (ix, moon in GalileanMoons) {
+				summary ..= ToString(ix, moon.name);
+			}
+			assert("0Io1Europa2Ganymede3Callisto" == summary);
+		}
 	}
 	
 	// * assert : sanity test.

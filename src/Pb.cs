@@ -123,6 +123,7 @@ namespace Pebble {
 		EnumMustHaveValues,
 		EnumNameDuplicate,
 		ForEachInvalidCollection,
+		ForEachInvalidType,
 		ForEachIteratorNameTaken,
 		ForIteratorNameTaken,
 		ForRangeMustBeNumeric,

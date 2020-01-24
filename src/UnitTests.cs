@@ -368,6 +368,9 @@ namespace Pebble {
 				// -- foreach collection can be an expression, not just a symbol
 				{"{ List<Dictionary<string, num>> ldsn = new List<Dictionary<string, num>>; ldsn.Add(new Dictionary<string, num>); num count; foreach(k, v in ldsn[0]) { ++count; }; count; }", 0},
 
+				// -- foreach on enums
+				{"{ enum<num> TestEnum { a, b }; string cat; foreach (ix, e in TestEnum) { cat = ToString(cat, ix, e.name); } cat; }", "0a1b"},
+
 				// *** Dictionaries
 				{"Dictionary<string, num> dict = new Dictionary<string, num>;", null},
 				{"dict.Count();", 0},
@@ -1035,6 +1038,11 @@ namespace Pebble {
 				// -- loop indexer const
 				{"{ foreach (k, v in dict) { k = \"hello\"; } }", ParseErrorType.AssignToConst},
 				{"{ foreach (k, v in dict) { v = 42; } }", ParseErrorType.AssignToConst},
+				// -- cannot foreach on a enum value
+				{"{ TestEnum e; foreach (a, b in e) {} }", ParseErrorType.ForEachInvalidCollection},
+				// -- cannot foreach on any type other than an enum.
+				{"{ foreach (a, b in A) {} }", ParseErrorType.ForEachInvalidType},
+				{"{ foreach (a, b in n) {} }", ParseErrorType.ForEachInvalidCollection},
 
 				// Break & continue
 				{"break;", ParseErrorType.BreakNotInFor},

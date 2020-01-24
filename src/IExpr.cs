@@ -1500,15 +1500,23 @@ namespace Pebble {
 	// ForEach
 
 	public class Expr_ForEach : IExpr {
+		enum CollectionType {
+			INVALID,
+			LIST,
+			DICTIONARY,
+			ENUM,
+		};
+
 		public string kSym;
 		public string vSym;
 		public IExpr collection { get { return nodes[0]; } }
 		public IExpr body { get { return nodes[1]; } }
 
+		private CollectionType _collectionType = CollectionType.INVALID;
 		protected TypeDef_Class classType;
+		protected TypeDef_Enum enumType;
 		protected ITypeDef _kIteratorType;
 		protected ITypeDef _vIteratorType;
-		protected bool isList = false;
 
 		public Expr_ForEach(IExpr c, string k, string v, IExpr b) {
 			kSym = k;
@@ -1529,25 +1537,43 @@ namespace Pebble {
 		}
 
 		override public ITypeDef TypeCheck(ExecContext context, ref bool error) {
-			collection.TypeCheck(context, ref error);
-
-			ITypeDef collectionType = collection.TypeCheck(context, ref error);
-			if (null == collectionType) {
-				return null;
+			if (collection is Expr_Symbol) {
+				string symName = (collection as Expr_Symbol).GetName();
+				ITypeDef type = context.GetTypeByName(symName);
+				if (null != type) {
+					if (type is TypeDef_Enum) {
+						enumType = type as TypeDef_Enum;
+						_collectionType = CollectionType.ENUM;
+					} else {
+						LogCompileErr(context, ParseErrorType.ForEachInvalidType, "foreach: the only *types* that can be iterated over are enums.");
+						error = true;
+						return null;
+					}
+				}
 			}
 
-			classType = collectionType as TypeDef_Class;
-			if (null == classType) {
-				LogCompileErr(context, ParseErrorType.ForEachInvalidCollection, "foreach: collection identifier not a class.");
-				error = true;
-				return null;
-			}
+			if (_collectionType != CollectionType.ENUM) {
+				ITypeDef collectionType = collection.TypeCheck(context, ref error);
+				if (null == collectionType)
+					return null;
 
-			ClassDef classDef = context.GetClass(classType.className);
-			if ("List" != classDef.name && "Dictionary" != classDef.name) {
-				LogCompileErr(context, ParseErrorType.ForEachInvalidCollection, "foreach: can only iterate over List or Dictionary.");
-				error = true;
-				return null;
+				classType = collectionType as TypeDef_Class;
+				if (null == classType) {
+					LogCompileErr(context, ParseErrorType.ForEachInvalidCollection, "foreach: collection not a class instance.");
+					error = true;
+					return null;
+				}
+
+				ClassDef classDef = context.GetClass(classType.className);
+				if ("List" == classDef.name)
+					_collectionType = CollectionType.LIST;
+				else if ("Dictionary" == classDef.name)
+					_collectionType = CollectionType.DICTIONARY;
+				else {
+					LogCompileErr(context, ParseErrorType.ForEachInvalidCollection, "foreach: can only iterate over Lists, Dictionarys, and enums.");
+					error = true;
+					return null;
+				}
 			}
 
 			if (!context.stack.IsSymbolAvailable(context, kSym)) {
@@ -1574,17 +1600,18 @@ namespace Pebble {
 				return null;
 			}
 
-			isList = "List" == classDef.name;
-
 			if (!context.stack.PushBlock(Pb.FOREACH_BLOCK_NAME, null)) {
 				LogCompileErr(context, ParseErrorType.StackOverflow, "foreach: stack overflow pushing block.");
 				error = true;
 				return null;
 			}
 			{
-				if (isList) {
+				if (_collectionType == CollectionType.LIST) {
 					_kIteratorType = IntrinsicTypeDefs.CONST_NUMBER;
 					_vIteratorType = TypeFactory.GetConstVersion(classType.genericTypes[0]);
+				} else if (_collectionType == CollectionType.ENUM) {
+					_kIteratorType = IntrinsicTypeDefs.CONST_NUMBER;
+					_vIteratorType = TypeFactory.GetConstVersion(enumType);
 				} else {
 					_kIteratorType = TypeFactory.GetConstVersion(classType.genericTypes[0]);
 					_vIteratorType = TypeFactory.GetConstVersion(classType.genericTypes[1]);
@@ -1602,7 +1629,7 @@ namespace Pebble {
 		public override object Evaluate(ExecContext context) {
 			Pb.Assert(0 == context.control.flags);
 
-			if (isList) {
+			if (_collectionType == CollectionType.LIST) {
 				object listObject = collection.Evaluate(context);
 				if (null == listObject) {
 					context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "foreach list is null.");
@@ -1652,7 +1679,7 @@ namespace Pebble {
 
 				--list.enumeratingCount;
 
-			} else {
+			} else if (_collectionType == CollectionType.DICTIONARY) {
 				object dictObject = collection.Evaluate(context);
 				if (null == dictObject) {
 					context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "foreach dictionary is null.");
@@ -1699,6 +1726,45 @@ namespace Pebble {
 				}
 
 				--dict.enumeratingCount;
+			} else { // is enum
+				// Note that collection must be evaluated *before* the foreach block is pushed
+				// or the ref looks at the wrong scope.
+				if (!context.stack.PushBlock(Pb.FOREACH_BLOCK_NAME, context)) {
+					context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "foreach: stack overflow pushing block");
+					return null;
+				}
+
+				VarStackRef kRef = context.AddLocalVariable(kSym, _kIteratorType, _kIteratorType.GetDefaultValue(context));
+				VarStackRef vRef = context.AddLocalVariable(vSym, _vIteratorType, _vIteratorType.GetDefaultValue(context));
+				Variable kVar = context.stack.GetVarAtIndex(kRef);
+				Variable vVar = context.stack.GetVarAtIndex(vRef);
+
+				ClassDef_Enum enumDef = context.GetClass(enumType.className) as ClassDef_Enum;
+
+				int count = enumDef.staticVars.Count;
+				for (int ii = 0; ii < count; ++ii) {
+					kVar.value = Convert.ToDouble(ii);
+					vVar.value = enumDef.staticVars[ii].value;
+
+					body.Evaluate(context);
+					if (context.IsRuntimeErrorSet()) {
+						context.stack.PopScope();
+						return null;
+					}
+
+					if (0 != (context.control.flags & ControlInfo.CONTINUE)) {
+						// All we need to do to continue is just clear the flag.
+						context.control.flags -= ControlInfo.CONTINUE;
+					}
+					if (0 != (context.control.flags & ControlInfo.BREAK)) {
+						context.control.flags -= ControlInfo.BREAK;
+						break;
+					}
+					if (0 != (context.control.flags & ControlInfo.RETURN)) {
+						// Return isn't for us, so just break out.
+						break;
+					}
+				}
 			}
 			context.stack.PopScope();
 

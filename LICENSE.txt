@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2020 - Patrick Cyr
+Copyright (c) 2015-2020 Patrick Cyr.
 
 All rights reserved.
 
@@ -21,14 +21,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
-*** A note about parser.frame and scanner.frame ***
-
-Coco/R's license says that generated files--namely, parser.cs and 
-scanner.cs--are not included in their copyright. Virtually all of the content
-of the .frame files (minus a few tags) is included in the generated .cs 
-files. Because of this, I believe that including the .frame files in this 
-non-GPL project does not run against the spirit of the Coco/R license. Pebble 
-users who do not wish to make modifications to the grammar and who are 
-concerned about this can just delete the .frame files.
