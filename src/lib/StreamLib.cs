@@ -449,23 +449,6 @@ namespace Pebble {
 			bool result = true;
 			engine.Log("\n*** StreamLib: Running tests...");
 
-			List<ParseErrorInst> errors = new List<ParseErrorInst>();
-			if (File.Exists("streamTest.txt")) {
-				string fileContents = File.ReadAllText("streamTest.txt");
-				object ret = engine.RunScript(fileContents, ref errors, verbose);
-				if (ret is RuntimeErrorInst) {
-					engine.LogError("streamTest.txt: Runtime Error: " + ((RuntimeErrorInst)ret).ToString());
-					result = false;
-				} else if (errors.Count != 0) {
-					result = false;
-				}
-
-				if (!result)
-					engine.LogError("^ streamTest.txt failed ^");
-
-			} else {
-				engine.LogError("Couldn't find streamTest.txt test file. Make the examples directory the working directory in order to run the test.");
-			}
 
 			result &= engine.RunTest("{ Stream badFileStream = new; bool result = badFileStream.OpenWriteBinary(\"bad/filename\"); !result && !badFileStream.IsOpen(); }", true, verbose);
 
@@ -499,7 +482,10 @@ namespace Pebble {
 			// Note: this test changes the test stream to read.
 			result &= engine.RunRuntimeFailTest("{ gstream.Close(); gstream.OpenReadBinary(\"StreamLibTest.bin\"); gstream << 4; }", RuntimeErrorType.SerializeReadRequiresLValue, verbose);
 			result &= engine.RunRuntimeFailTest("{ const num cn = 10; gstream << cn; }", RuntimeErrorType.SerializeIntoConst, verbose);
-			
+
+			// Clean up.
+			result &= engine.RunTest("{ gstream.Close(); File::Delete(\"StreamLibTest.bin\"); }", true, verbose);
+
 			engine.logCompileErrors = sav;
 			engine.Log("*** StreamLib: Tests " + (result ? "succeeded" : "FAILED"));
 			return result;

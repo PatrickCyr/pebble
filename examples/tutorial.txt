@@ -1318,6 +1318,9 @@ Debug::TimerStart();
 				bsc.ln[1] == bsc2.ln[1] &&
 				bsc.ln[2] == bsc2.ln[2] &&
 				bsc.ignored != bsc2.ignored);
+				
+		// Clean up.
+		File::Delete("deleteme.bin");
 	}
 	
 	// The power of this approach is that unlike text serialization you can handle changes to the serialized classes.

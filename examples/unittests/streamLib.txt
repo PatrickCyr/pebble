@@ -1,0 +1,152 @@
+// StreamLib unit tests.
+
+// *** Define all the values we want to write.
+
+// * Intrinsics
+num n = Math::pi;
+bool b = true;
+string s = "Hello, world!";
+// * null
+List<bool> lnull;
+// * List
+List<num> ln = new { Add(16).Add(32).Add(48); };
+// * Nested Lists
+List<List<string>> lls = new { 
+	Add(new List<string> { 
+		Add("L00").Add("L01").Add("L02");
+	});
+	Add(new List<string> { 
+		Add("L10").Add("L11");
+	});
+	Add(new List<string> { 
+		Add("L20").Add("L21").Add("L22").Add("L23");
+	});
+};
+// * Dictionary
+Dictionary<string, num> dsn = new {
+	Add("ten", 10);
+	Add("twenty", 20);
+	Add("thirty", 30);
+};
+Dictionary<string, num> dnull;
+// * Class
+class StreamTest {
+	num n;
+	string s;
+	
+	bool Serialize(Stream stream) {
+		stream << n;
+		stream << s;
+		
+		true;
+	}
+};
+StreamTest a = new { n = 42; s = "hello"; };
+StreamTest anull;
+// * Nested class
+class NestedStreamTest {
+	StreamTest a = new { n = 7; };
+	List<StreamTest> la = new { 
+		Add(new StreamTest { n = 11; } ); 
+	};
+	
+	bool Serialize(Stream stream) {
+		stream << a;
+		stream << la;
+		true;
+	}
+};
+NestedStreamTest nst = new;
+// * Enum
+ScriptError se = ScriptError::NumberInvalid;
+
+// *** Define all the variables we want to read into.
+
+num nonVariable2;
+num n2;
+bool b2;
+string s2;
+List<bool> lnull2 = new;
+List<num> ln2;
+List<List<string>> lls2;
+Dictionary<string, num> dsn2;
+Dictionary<string, num> dnull2 = new;
+StreamTest a2;
+StreamTest anull2 = new StreamTest;
+NestedStreamTest nst2;
+ScriptError se2;
+
+// *** Write the data
+
+Stream stream = new;
+stream.OpenWriteBinary("streamTest.bin");
+
+stream << 999;	// Stream non variable.
+stream << n;
+stream << b;
+stream << s;
+stream << lnull;
+stream << ln;
+stream << lls;
+stream << dsn;
+stream << dnull;
+stream << a;
+stream << anull;
+stream << nst;
+stream << se;
+
+stream.Close();
+
+// *** Read the data
+
+stream.OpenReadBinary("streamTest.bin");
+
+stream << nonVariable2;
+stream << n2;
+stream << b2;
+stream << s2;
+stream << lnull2;
+stream << ln2;
+stream << lls2;
+stream << dsn2;
+stream << dnull2;
+stream << a2;
+stream << anull2;
+stream << nst2;
+stream << se2;
+
+stream.Close();
+File::Delete("streamTest.bin");
+
+// *** Validate that the two sets of variables are identical
+
+assert(999 == nonVariable2);
+assert(n == n2);
+assert(b == b2);
+assert(s == s2);
+assert(null == lnull2);
+assert(#ln == #ln2);
+foreach (ix, val in ln) {
+	assert(ln2[ix] == val);
+}
+assert(#lls == #lls2);
+foreach(ix, ls in lls) {
+	assert(#lls2[ix] == #ls);
+	foreach (ix2, str in ls) {
+		assert(str == lls2[ix][ix2]);
+	}
+}
+assert(#dsn == #dsn2);
+foreach (key, val in dsn) {
+	assert(dsn2[key] == val);
+}
+assert(dnull2 == null);
+assert(a.n == a2.n);
+assert(a.s == a2.s);
+assert(null == anull2);
+assert(nst2.a.n == nst.a.n);
+assert(#nst2.la == #nst.la);
+assert(nst2.la[0].n == nst.la[0].n);
+assert(se == se2);
+
+true;
