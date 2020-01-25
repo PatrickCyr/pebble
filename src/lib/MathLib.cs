@@ -234,7 +234,7 @@ namespace Pebble {
 				// Note: Here is an example of how you provide default argument values for a host function.
 				List<Expr_Literal> defaultArgVals = new List<Expr_Literal>();
 				defaultArgVals.Add(null);
-				defaultArgVals.Add(new Expr_Literal(0.0, IntrinsicTypeDefs.NUMBER));
+				defaultArgVals.Add(new Expr_Literal(null, 0.0, IntrinsicTypeDefs.NUMBER));
 
 				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.NUMBER, IntrinsicTypeDefs.NUMBER }, eval, false, null, false, defaultArgVals);
 				classDef.AddMemberLiteral("Round", newValue.valType, newValue, true);

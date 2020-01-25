@@ -24,6 +24,14 @@ namespace Pebble {
 		protected int _line = -1;
 		protected int _col = -1;
 
+		// If creating the IExpr during parsing (which is the case 99% of the time), pass it in so we can extract line/col info from it.
+		public IExpr(Parser parser) {
+			if (null != parser) {
+				_line = parser.t.line;
+				_col = parser.t.col;
+			}
+		}
+
 		abstract public ITypeDef TypeCheck(ExecContext context, ref bool error);
 		abstract public object Evaluate(ExecContext context);
 
@@ -39,11 +47,6 @@ namespace Pebble {
 			return _type;
 		}
 
-		public IExpr SetDebugInfo(Parser parser) {
-			_line = parser.t.line;
-			_col = parser.t.col;
-			return this;
-		}
 		public string GetFileLineString() {
 			return "[" + _line + ":" + _col + "] ";
 		}
@@ -53,6 +56,8 @@ namespace Pebble {
 	}
 
 	public abstract class IExpr_LValue : IExpr {
+		public IExpr_LValue(Parser parser) : base(parser) { }
+
 		abstract public Variable EvaluateLValue(ExecContext context);
 	}
 
@@ -65,7 +70,7 @@ namespace Pebble {
 		public object value;
 		protected ITypeDef _typeDef;
 
-		public Expr_Value(object val, ITypeDef typeDef) {
+		public Expr_Value(Parser parser, object val, ITypeDef typeDef) : base(parser) {
 			value = val;
 			_typeDef = typeDef;
 			SetType(typeDef);
@@ -114,12 +119,12 @@ namespace Pebble {
 		// static isn't part of something's type so there's no other way of telling, I think.
 		public bool isStatic = false;
 
-		public Expr_Literal(object val, ITypeRef typeRef) {
+		public Expr_Literal(Parser parser, object val, ITypeRef typeRef) : base(parser) {
 			value = val;
 			_typeRef = typeRef;
 		}
 
-		public Expr_Literal(object val, ITypeDef typeDef) {
+		public Expr_Literal(Parser parser, object val, ITypeDef typeDef) : base(parser) {
 			value = val;
 			_typeDef = typeDef;
 
@@ -302,7 +307,7 @@ namespace Pebble {
 		//public Variable _value;
 		protected VarStackRef _ref;
 
-		public Expr_Symbol(string name) {
+		public Expr_Symbol(Parser parser, string name) : base(parser) {
 			Pb.Assert(null != name, "Expr_Symbol constructor: name = null!");
 			_symbol = name;
 		}
@@ -363,7 +368,7 @@ namespace Pebble {
 		// It's shitty, but happens because Call encapsulates Dot in the AST.
 		public ClassValue resolvedClassValue;
 
-		public Expr_Dot(IExpr obj, string field) {
+		public Expr_Dot(Parser parser, IExpr obj, string field) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(obj);
 
@@ -459,7 +464,7 @@ namespace Pebble {
 		protected ClassDef _scope;
 		protected VarStackRef _globVarRef;
 
-		public Expr_Scope(string className, string field) {
+		public Expr_Scope(Parser parser, string className, string field) : base(parser) {
 			_className = className;
 			_field = field;
 		}
@@ -541,7 +546,7 @@ namespace Pebble {
 		protected IExpr _symExpr { get { return nodes[0]; } }
 		protected IExpr _ixExpr { get { return nodes[1]; } }
 
-		public Expr_Index(IExpr sym, IExpr ix) {
+		public Expr_Index(Parser parser, IExpr sym, IExpr ix) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(sym);
 			nodes.Add(ix);
@@ -653,7 +658,7 @@ namespace Pebble {
 		protected ITypeDef _actualRetType;
 		TypeDef_Function fType;
 
-		public static IExpr Create(string name, IExpr arg1 = null, IExpr arg2 = null, IExpr arg3 = null) {
+		public static IExpr Create(Parser parser, string name, IExpr arg1 = null, IExpr arg2 = null, IExpr arg3 = null) {
 			List<IExpr> args = new List<IExpr>();
 			if (null != arg1)
 				args.Add(arg1);
@@ -661,10 +666,10 @@ namespace Pebble {
 				args.Add(arg2);
 			if (null != arg3)
 				args.Add(arg3);
-			return new Expr_Call(new Expr_Symbol(name), args);
+			return new Expr_Call(parser, new Expr_Symbol(parser, name), args);
 		}
 
-		public Expr_Call(IExpr funcExpr, List<IExpr> argsIn) {
+		public Expr_Call(Parser parser, IExpr funcExpr, List<IExpr> argsIn) : base(parser) {
 			Pb.Assert(null != funcExpr);
 			nodes = new List<IExpr>();
 			nodes.Add(funcExpr);
@@ -905,7 +910,7 @@ namespace Pebble {
 	public class Expr_ExprList : IExpr {
 		public bool createScope = true;
 
-		public Expr_ExprList() {
+		public Expr_ExprList(Parser parser) : base(parser) {
 			nodes = new List<IExpr>();
 		}
 
@@ -990,15 +995,15 @@ namespace Pebble {
 		public IExpr symbol { get { return (IExpr_LValue)nodes[0]; } }
 		public IExpr valueExpr { get { return nodes[1]; } }
 
-		public static IExpr CreateInc(IExpr expr) {
-			return new Expr_Assign(expr, new Expr_BinOp(Expr_BinOp.OP.ADD, expr, new Expr_Literal(1.0, IntrinsicTypeDefs.NUMBER)));
+		public static IExpr CreateInc(Parser parser, IExpr expr) {
+			return new Expr_Assign(parser, expr, new Expr_BinOp(parser, Expr_BinOp.OP.ADD, expr, new Expr_Literal(parser, 1.0, IntrinsicTypeDefs.NUMBER)));
 		}
 
-		public static IExpr CreateDec(IExpr expr) {
-			return new Expr_Assign(expr, new Expr_BinOp(Expr_BinOp.OP.SUB, expr, new Expr_Literal(1.0, IntrinsicTypeDefs.NUMBER)));
+		public static IExpr CreateDec(Parser parser, IExpr expr) {
+			return new Expr_Assign(parser, expr, new Expr_BinOp(parser, Expr_BinOp.OP.SUB, expr, new Expr_Literal(parser, 1.0, IntrinsicTypeDefs.NUMBER)));
 		}
 
-		public Expr_Assign(IExpr sym, IExpr val) {
+		public Expr_Assign(Parser parser, IExpr sym, IExpr val) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(sym);
 			nodes.Add(val);
@@ -1081,7 +1086,7 @@ namespace Pebble {
 		public ITypeDef typeDef;
 		protected bool _funcInitError = false;
 
-		public static IExpr CreateFunctionLiteral(ITypeRef retType, string sym, List<ITypeRef> argTypes, List<Expr_Literal> defaultValues, List<string> argNames, IExpr body, DeclMods mods) {
+		public static IExpr CreateFunctionLiteral(Parser parser, ITypeRef retType, string sym, List<ITypeRef> argTypes, List<Expr_Literal> defaultValues, List<string> argNames, IExpr body, DeclMods mods) {
 			if (null != defaultValues) {
 				if (0 == defaultValues.Count) {
 					defaultValues = null;
@@ -1096,7 +1101,7 @@ namespace Pebble {
 			// all function literals are const
 			TypeRef_Function funcTypeRef = new TypeRef_Function(retType, argTypes, defaultValues, false, true);
 
-			Expr_Set result = new Expr_Set(funcTypeRef, sym, mods);
+			Expr_Set result = new Expr_Set(parser, funcTypeRef, sym, mods);
 			result.isFunctionLiteral = true;
 
 			// This is not the right ret type.  The actual type is whatever the type of body is, but we won't know that 
@@ -1106,11 +1111,11 @@ namespace Pebble {
 			funcValue.argNames = argNames;
 
 			// If this Set is a class member function, the type is all wrong here. The class must fix it.
-			result.SetValue(new Expr_Literal(funcValue, funcTypeRef));
+			result.SetValue(new Expr_Literal(parser, funcValue, funcTypeRef));
 			return result;
 		}
 
-		public Expr_Set(ITypeRef vType, string sym, DeclMods mods) {
+		public Expr_Set(Parser parser, ITypeRef vType, string sym, DeclMods mods) : base(parser) {
 			declMods = mods;
 			typeRef = vType;
 			symbol = sym;
@@ -1260,7 +1265,7 @@ namespace Pebble {
 			}
 		}
 
-		public Expr_If(IExpr cond, IExpr tCase, IExpr fCase = null) {
+		public Expr_If(Parser parser, IExpr cond, IExpr tCase, IExpr fCase = null) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(cond);
 			nodes.Add(tCase);
@@ -1336,13 +1341,13 @@ namespace Pebble {
 		public IExpr step { get { return nodes[2]; } }
 		public IExpr body { get { return nodes[3]; } }
 
-		public Expr_For(string it, IExpr s, IExpr e, IExpr step, IExpr b) {
+		public Expr_For(Parser parser, string it, IExpr s, IExpr e, IExpr step, IExpr b) : base(parser) {
 			iterator = it;
 			nodes = new List<IExpr>();
 			nodes.Add(s);
 			nodes.Add(e);
 			if (null == step)
-				step = new Expr_Literal(1.0, IntrinsicTypeDefs.NUMBER);
+				step = new Expr_Literal(parser, 1.0, IntrinsicTypeDefs.NUMBER);
 			nodes.Add(step);
 			nodes.Add(b);
 		}
@@ -1518,7 +1523,7 @@ namespace Pebble {
 		protected ITypeDef _kIteratorType;
 		protected ITypeDef _vIteratorType;
 
-		public Expr_ForEach(IExpr c, string k, string v, IExpr b) {
+		public Expr_ForEach(Parser parser, IExpr c, string k, string v, IExpr b) : base(parser) {
 			kSym = k;
 			vSym = v;
 
@@ -1777,6 +1782,8 @@ namespace Pebble {
 
 	public class Expr_Break : IExpr {
 
+		public Expr_Break(Parser parser) : base(parser) { }
+
 		public override string ToString() {
 			return "BREAK;";
 		}
@@ -1808,6 +1815,8 @@ namespace Pebble {
 	// Continue
 
 	public class Expr_Continue : IExpr {
+
+		public Expr_Continue(Parser parser) : base(parser) { }
 
 		public override string ToString() {
 			return "(CONTINUE)";
@@ -1859,7 +1868,7 @@ namespace Pebble {
 		static protected TypeDef_Function _tostringFunctionType = null;
 		static protected TypeDef_Function _thistoscriptFunctionType = null;
 
-		public Expr_Class(string sym) {
+		public Expr_Class(Parser parser, string sym) : base(parser) {
 			_symbol = sym;
 
 			nodes = new List<IExpr>();
@@ -2278,7 +2287,7 @@ namespace Pebble {
 
 		protected IExpr _initializer { get { return null != nodes ? nodes[0] : null; } }
 
-		public Expr_New(ITypeRef type, IExpr initializer) {
+		public Expr_New(Parser parser, ITypeRef type, IExpr initializer) : base(parser) {
 			typeRef = type;
 			if (null != initializer) {
 				Pb.Assert(initializer is Expr_ExprList, "Parser passed an expression that wasn't a list as a new initializer.");
@@ -2377,7 +2386,7 @@ namespace Pebble {
 		protected IExpr _rhs { get { return nodes[1]; } }
 		protected bool _neg;
 
-		public Expr_Compare(IExpr left, IExpr right, bool neg) {
+		public Expr_Compare(Parser parser, IExpr left, IExpr right, bool neg) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(left);
 			nodes.Add(right);
@@ -2457,7 +2466,7 @@ namespace Pebble {
 		protected IExpr _trueCase { get { return nodes[1]; } }
 		protected IExpr _falseCase { get { return nodes[2]; } }
 
-		public Expr_Conditional(IExpr condition, IExpr trueCase, IExpr falseCase) {
+		public Expr_Conditional(Parser parser, IExpr condition, IExpr trueCase, IExpr falseCase) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(condition);
 			nodes.Add(trueCase);
@@ -2511,7 +2520,7 @@ namespace Pebble {
 	public class Expr_Return : IExpr {
 		protected IExpr _value { get { return nodes[0]; } }
 
-		public Expr_Return(IExpr value) {
+		public Expr_Return(Parser parser, IExpr value) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(value);
 		}
@@ -2578,85 +2587,13 @@ namespace Pebble {
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
-	// Assert - Replaced by Expr_Test
-	/*
-	public class Expr_Assert : IExpr {
-		protected IExpr _condition { get { return nodes[0]; } }
-		protected IExpr _message { get { return nodes[1]; } }
-		protected IExpr _block { get { return nodes[2]; } }
-
-		public Expr_Assert(IExpr condition, IExpr message = null, IExpr block = null) {
-			nodes = new List<IExpr>();
-			nodes.Add(condition);
-			nodes.Add(message);
-			nodes.Add(block);
-		}
-
-		public override string ToString() {
-			return "ASSERT(" + _condition + (null != _message ? ", " + _message : "") + ")";
-		}
-
-		public override string MyToString(string indent) {
-			return "ASSERT(" + _condition.MyToString(indent) + (null != _message ? ", " + _message.MyToString(indent) : "") + ")";
-		}
-
-		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
-			ITypeDef conditionType = _condition.TypeCheck(context, ref error);
-			if (null == conditionType)
-				return null;
-			if (!IntrinsicTypeDefs.BOOL.Equals(conditionType)) {
-				error = true;
-				LogCompileErr(context, ParseErrorType.AssertNeedsBool, "First argument to assert must be boolean.");
-			}
-
-			if (null != _message) {
-				ITypeDef messageType = _message.TypeCheck(context, ref error);
-				if (null == messageType)
-					return null;
-				if (!IntrinsicTypeDefs.STRING.Equals(messageType)) {
-					error = true;
-					LogCompileErr(context, ParseErrorType.AssertNeedsString, "Second argument to assert must be a string.");
-				}
-			}
-
-			return SetType(IntrinsicTypeDefs.BOOL);
-		}
-
-		public override object Evaluate(ExecContext context) {
-			Pb.Assert(0 == context.control.flags);
-
-			object objResult = _condition.Evaluate(context);
-			if (context.IsRuntimeErrorSet())
-				return null;
-			bool result = (bool)objResult;
-
-			if (!result) {
-				string msg = "FAILED " + _condition.GetFileLineString();
-				string userMessage = "";
-				if (null != _message) {
-					userMessage = "- " + (string)_message.Evaluate(context);
-					if (context.IsRuntimeErrorSet()) {
-						userMessage = "- <Additional error evaluating Assert message! Jeez...>";
-					}
-				}
-
-				context.SetRuntimeError(RuntimeErrorType.Assert, msg + userMessage);
-				return null;
-			}
-
-			return true;
-		}
-	}
-	*/
-
-	//////////////////////////////////////////////////////////////////////////////
 	// ScriptToValue (<-)
 
 	public class Expr_ScriptToValue : IExpr {
 		protected IExpr _lhs { get { return nodes[0]; } }
 		protected IExpr _rhs { get { return nodes[1]; } }
 
-		public Expr_ScriptToValue(IExpr left, IExpr right) {
+		public Expr_ScriptToValue(Parser parser, IExpr left, IExpr right) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(left);
 			nodes.Add(right);
@@ -2785,7 +2722,7 @@ namespace Pebble {
 
 		protected static TypeDef_Function _serializeFunctionType = null;
 
-		public Expr_Stream(IExpr left, IExpr right) {
+		public Expr_Stream(Parser parser, IExpr left, IExpr right) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(left);
 			nodes.Add(right);
@@ -2888,7 +2825,7 @@ namespace Pebble {
 		protected IExpr _lvalue { get { return nodes[0]; } }
 		protected bool _decrement;
 
-		public Expr_Postrement(IExpr lvalue, bool decrement) {
+		public Expr_Postrement(Parser parser, IExpr lvalue, bool decrement) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(lvalue);
 			_decrement = decrement;
@@ -2959,7 +2896,7 @@ namespace Pebble {
 		protected ITypeRef _typeRef;
 		protected bool _preregError = false;
 
-		public Expr_TypeAlias(string sym, ITypeRef typeRef) {
+		public Expr_TypeAlias(Parser parser, string sym, ITypeRef typeRef) : base(parser) {
 			_name = sym;
 			_typeRef = typeRef;
 		}
@@ -3023,7 +2960,7 @@ namespace Pebble {
 	// Expr_This
 
 	public class Expr_This : IExpr {
-		public Expr_This() {
+		public Expr_This(Parser parser) : base(parser) {
 		}
 
 		public override string ToString() {
@@ -3059,7 +2996,7 @@ namespace Pebble {
 	public class Expr_Length : IExpr {
 		private IExpr _expr { get { return nodes[0]; } }
 
-		public Expr_Length(IExpr rhs) {
+		public Expr_Length(Parser parser, IExpr rhs) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(rhs);
 		}
@@ -3146,7 +3083,7 @@ namespace Pebble {
 
 		private OP _op;
 
-		public Expr_BinOp(OP op, IExpr lhs, IExpr rhs) {
+		public Expr_BinOp(Parser parser, OP op, IExpr lhs, IExpr rhs) : base(parser) {
 			_op = op;
 
 			nodes = new List<IExpr>();
@@ -3318,7 +3255,7 @@ namespace Pebble {
 
 		private OP _op;
 
-		public Expr_UnOp(OP op, IExpr expr) {
+		public Expr_UnOp(Parser parser, OP op, IExpr expr) : base(parser) {
 			_op = op;
 
 			nodes = new List<IExpr>();
@@ -3399,7 +3336,7 @@ namespace Pebble {
 
 		private ClassDef _classDef;
 
-		public Expr_Catch(IExpr block) {
+		public Expr_Catch(Parser parser, IExpr block) : base(parser) {
 			nodes = new List<IExpr>();
 			nodes.Add(block);
 		}
@@ -3475,7 +3412,7 @@ namespace Pebble {
 		private List<EnumValue> _valueList;
 		private PebbleEnum _pe;
 
-		public Expr_Enum(string name, ITypeRef enumType) {
+		public Expr_Enum(Parser parser, string name, ITypeRef enumType) : base(parser) {
 			_enumName = name;
 			_enumTypeRef = enumType;
 		}
@@ -3568,19 +3505,17 @@ namespace Pebble {
 		private IExpr _message { get { return nodes[1]; } }
 		private IExpr _block { get { return nodes[2]; } }
 
-		//private bool _throwExceptionOnFail = false;
 		private ParseErrorInst _pei;
 		private bool _result = true;
 
 		public static FunctionValue handler = null;
 
-		public Expr_Assert(IExpr expectedValue, IExpr message, IExpr block, bool throwExceptionOnFail) {
+		public Expr_Assert(Parser parser, IExpr expectedValue, IExpr message, IExpr block, bool throwExceptionOnFail) : base(parser) {
 			nodes = new List<IExpr>() {
 				expectedValue,
 				message,
 				block
 			};
-			//_throwExceptionOnFail = throwExceptionOnFail;
 		}
 
 		public override string ToString() {
@@ -3721,17 +3656,3 @@ namespace Pebble {
 		}
 	}
 }
-
-
-/* Enum Ideas
- 
-"compile time" checks
-* parse success
-* type check success
-
-"run time" checks
-* evaluation success (test)
-* evaluation result (assert)
-
-*/
-  

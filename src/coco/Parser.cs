@@ -256,19 +256,19 @@ const int // types
 	void Literal(ref IExpr expr) {
 		if (la.kind == 51) {
 			Get();
-			expr = new Expr_Literal(true, IntrinsicTypeDefs.BOOL).SetDebugInfo(this); 
+			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL); 
 		} else if (la.kind == 52) {
 			Get();
-			expr = new Expr_Literal(false, IntrinsicTypeDefs.BOOL).SetDebugInfo(this); 
+			expr = new Expr_Literal(this, false, IntrinsicTypeDefs.BOOL); 
 		} else if (la.kind == 53) {
 			Get();
-			expr = new Expr_Literal(null, IntrinsicTypeDefs.NULL).SetDebugInfo(this); 
+			expr = new Expr_Literal(this, null, IntrinsicTypeDefs.NULL); 
 		} else if (la.kind == 2) {
 			Get();
-			expr = new Expr_Literal(Convert.ToDouble(t.val), IntrinsicTypeDefs.NUMBER).SetDebugInfo(this); 
+			expr = new Expr_Literal(this, Convert.ToDouble(t.val), IntrinsicTypeDefs.NUMBER); 
 		} else if (la.kind == 3) {
 			Get();
-			expr = new Expr_Literal(t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING).SetDebugInfo(this); 
+			expr = new Expr_Literal(this, t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING); 
 		} else SynErr(74);
 	}
 
@@ -312,7 +312,7 @@ const int // types
 		if (null != type) type.SetConst(mods._const); 
 		Ident(ref sym);
 		if (la.kind == 7 || la.kind == 17 || la.kind == 18) {
-			expr = new Expr_Set(type, sym, mods).SetDebugInfo(this); 
+			expr = new Expr_Set(this, type, sym, mods); 
 			if (la.kind == 7 || la.kind == 17) {
 				if (la.kind == 7) {
 					Get();
@@ -324,7 +324,7 @@ const int // types
 						if (la.kind == 63) {
 							StatementBlock(ref initializer);
 						}
-						value = new Expr_New(null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); value.SetDebugInfo(this); 
+						value = new Expr_New(this, null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); 
 					} else if (StartOf(2)) {
 						AssignExpr(ref init);
 						((Expr_Set)expr).SetValue(init); 
@@ -332,7 +332,7 @@ const int // types
 				} else {
 					Get();
 					Expr(ref script);
-					expr = new Expr_ScriptToValue(expr, script).SetDebugInfo(this); 
+					expr = new Expr_ScriptToValue(this, expr, script); 
 				}
 			}
 			Expect(18);
@@ -347,7 +347,7 @@ const int // types
 			}
 			Expect(11);
 			StatementBlock(ref body);
-			expr = Expr_Set.CreateFunctionLiteral(type, sym, argTypes, defaultValues, argNames, body, mods); expr.SetDebugInfo(this); ((Expr_Set)expr).value.SetDebugInfo(this); 
+			expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); 
 		} else SynErr(77);
 	}
 
@@ -357,7 +357,7 @@ const int // types
 	}
 
 	void StatementBlock(ref IExpr exprBlock) {
-		Expr_ExprList block = new Expr_ExprList(); block.SetDebugInfo(this);
+		Expr_ExprList block = new Expr_ExprList(this);
 		exprBlock = block;
 		IExpr expr = null; 
 		
@@ -378,43 +378,43 @@ const int // types
 			case 7: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Assign(expr1, expr2).SetDebugInfo(this); 
+				expr = new Expr_Assign(this, expr1, expr2); 
 				break;
 			}
 			case 19: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.ADD, expr1, expr2)).SetDebugInfo(this); 
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr1, expr2)); 
 				break;
 			}
 			case 20: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.SUB, expr1, expr2)).SetDebugInfo(this); 
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr1, expr2)); 
 				break;
 			}
 			case 21: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.MULT, expr1, expr2)).SetDebugInfo(this); 
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr1, expr2)); 
 				break;
 			}
 			case 22: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.DIV, expr1, expr2)).SetDebugInfo(this); 
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr1, expr2)); 
 				break;
 			}
 			case 23: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.CONCAT, expr1, expr2)).SetDebugInfo(this); 
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr1, expr2)); 
 				break;
 			}
 			case 24: {
 				Get();
 				Expr(ref expr2);
-				expr = new Expr_Stream(expr1, expr2).SetDebugInfo(this); 
+				expr = new Expr_Stream(this, expr1, expr2); 
 				break;
 			}
 			}
@@ -434,7 +434,7 @@ const int // types
 			Expr(ref expr2);
 			Expect(26);
 			CondExpr(ref expr3);
-			expr = new Expr_Conditional(expr1, expr2, expr3).SetDebugInfo(this); 
+			expr = new Expr_Conditional(this, expr1, expr2, expr3); 
 		}
 	}
 
@@ -445,7 +445,7 @@ const int // types
 		while (la.kind == 27) {
 			Get();
 			LogAndExpr(ref expr2);
-			expr = new Expr_BinOp(Expr_BinOp.OP.OR, expr, expr2).SetDebugInfo(this); 
+			expr = new Expr_BinOp(this, Expr_BinOp.OP.OR, expr, expr2); 
 		}
 	}
 
@@ -456,7 +456,7 @@ const int // types
 		while (la.kind == 28) {
 			Get();
 			EqlExpr(ref expr2);
-			expr = new Expr_BinOp(Expr_BinOp.OP.AND, expr, expr2).SetDebugInfo(this); 
+			expr = new Expr_BinOp(this, Expr_BinOp.OP.AND, expr, expr2); 
 		}
 	}
 
@@ -468,15 +468,15 @@ const int // types
 			if (la.kind == 29) {
 				Get();
 				RelExpr(ref expr2);
-				expr = new Expr_Compare(expr, expr2, false).SetDebugInfo(this); 
+				expr = new Expr_Compare(this, expr, expr2, false); 
 			} else if (la.kind == 30) {
 				Get();
 				RelExpr(ref expr2);
-				expr = new Expr_Compare(expr, expr2, true).SetDebugInfo(this);  
+				expr = new Expr_Compare(this, expr, expr2, true);  
 			} else {
 				Get();
 				RelExpr(ref expr2);
-				expr = new Expr_ScriptToValue(expr, expr2).SetDebugInfo(this);	
+				expr = new Expr_ScriptToValue(this, expr, expr2);	
 			}
 		}
 	}
@@ -489,23 +489,23 @@ const int // types
 			if (la.kind == 4) {
 				Get();
 				AddExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.LT, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.LT, expr, expr2); 
 			} else if (la.kind == 6) {
 				Get();
 				AddExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.GT, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.GT, expr, expr2); 
 			} else if (la.kind == 31) {
 				Get();
 				AddExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.LEQ, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.LEQ, expr, expr2); 
 			} else if (la.kind == 32) {
 				Get();
 				AddExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.GEQ, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.GEQ, expr, expr2); 
 			} else {
 				Get();
 				AddExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.STREQI, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.STREQI, expr, expr2); 
 			}
 		}
 	}
@@ -518,15 +518,15 @@ const int // types
 			if (la.kind == 34) {
 				Get();
 				MultExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.ADD, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr, expr2); 
 			} else if (la.kind == 35) {
 				Get();
 				MultExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.SUB, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr, expr2); 
 			} else {
 				Get();
 				MultExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.CONCAT, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr, expr2); 
 			}
 		}
 	}
@@ -539,15 +539,15 @@ const int // types
 			if (la.kind == 37) {
 				Get();
 				CastExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.MULT, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr, expr2); 
 			} else if (la.kind == 38) {
 				Get();
 				CastExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.DIV, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr, expr2); 
 			} else {
 				Get();
 				CastExpr(ref expr2);
-				expr = new Expr_BinOp(Expr_BinOp.OP.MOD, expr, expr2).SetDebugInfo(this); 
+				expr = new Expr_BinOp(this, Expr_BinOp.OP.MOD, expr, expr2); 
 			}
 		}
 	}
@@ -576,13 +576,13 @@ const int // types
 		UnaryPost(ref expr);
 		for (int i = li.Count - 1; i >= 0; --i) {
 		if (0 == li[i])
-		expr = Expr_Assign.CreateInc(expr).SetDebugInfo(this); 
+		expr = Expr_Assign.CreateInc(this, expr); 
 		else if (1 == li[i])
-		expr = Expr_Assign.CreateDec(expr).SetDebugInfo(this); 
+		expr = Expr_Assign.CreateDec(this, expr); 
 		else if (2 == li[i])
-		expr = new Expr_Length(expr).SetDebugInfo(this); 
+		expr = new Expr_Length(this, expr); 
 		else if (3 == li[i])
-		expr = new Expr_UnOp(Expr_UnOp.OP.TOSTRING, expr).SetDebugInfo(this);	
+		expr = new Expr_UnOp(this, Expr_UnOp.OP.TOSTRING, expr);	
 		}
 		
 	}
@@ -594,15 +594,15 @@ const int // types
 		} else if (la.kind == 34) {
 			Get();
 			CastExpr(ref expr);
-			expr = new Expr_UnOp(Expr_UnOp.OP.POS, expr).SetDebugInfo(this); 
+			expr = new Expr_UnOp(this, Expr_UnOp.OP.POS, expr); 
 		} else if (la.kind == 35) {
 			Get();
 			CastExpr(ref expr);
-			expr = new Expr_UnOp(Expr_UnOp.OP.NEG, expr).SetDebugInfo(this); 
+			expr = new Expr_UnOp(this, Expr_UnOp.OP.NEG, expr); 
 		} else if (la.kind == 44) {
 			Get();
 			CastExpr(ref expr);
-			expr = new Expr_UnOp(Expr_UnOp.OP.NOT, expr).SetDebugInfo(this); 
+			expr = new Expr_UnOp(this, Expr_UnOp.OP.NOT, expr); 
 		} else if (la.kind == 16) {
 			Get();
 			if (la.kind == 1) {
@@ -611,7 +611,7 @@ const int // types
 			if (la.kind == 63) {
 				StatementBlock(ref initializer);
 			}
-			expr = new Expr_New(valType, initializer).SetDebugInfo(this); 
+			expr = new Expr_New(this, valType, initializer); 
 		} else SynErr(78);
 	}
 
@@ -623,24 +623,24 @@ const int // types
 				Get();
 				Expr(ref indexExpr);
 				Expect(46);
-				expr = new Expr_Index(expr, indexExpr).SetDebugInfo(this); 
+				expr = new Expr_Index(this, expr, indexExpr); 
 			} else if (la.kind == 47) {
 				Get();
 				Expect(1);
-				expr = new Expr_Dot(expr, t.val).SetDebugInfo(this); 
+				expr = new Expr_Dot(this, expr, t.val); 
 			} else if (la.kind == 10) {
 				Get();
 				if (StartOf(2)) {
 					ArgExprList(ref args);
 				}
 				Expect(11);
-				expr = new Expr_Call(expr, args).SetDebugInfo(this); args = null; 
+				expr = new Expr_Call(this, expr, args); args = null; 
 			} else if (la.kind == 40) {
 				Get();
-				expr = new Expr_Postrement(expr, false).SetDebugInfo(this); 
+				expr = new Expr_Postrement(this, expr, false); 
 			} else {
 				Get();
-				expr = new Expr_Postrement(expr, true).SetDebugInfo(this); 
+				expr = new Expr_Postrement(this, expr, true); 
 			}
 		}
 	}
@@ -651,21 +651,21 @@ const int // types
 			Ident(ref className);
 			Expect(48);
 			Expect(1);
-			expr = new Expr_Scope(className, t.val).SetDebugInfo(this); 
+			expr = new Expr_Scope(this, className, t.val); 
 		} else if (la.kind == 48) {
 			Get();
 			Expect(1);
-			expr = new Expr_Scope(null, t.val).SetDebugInfo(this); 
+			expr = new Expr_Scope(this, null, t.val); 
 		} else if (la.kind == 1) {
 			Get();
-			expr = new Expr_Symbol(t.val).SetDebugInfo(this); 
+			expr = new Expr_Symbol(this, t.val); 
 		} else if (la.kind == 49) {
 			Get();
-			expr = new Expr_This().SetDebugInfo(this); 
+			expr = new Expr_This(this); 
 		} else if (la.kind == 50) {
 			Get();
 			StatementBlock(ref exprBlock);
-			expr = new Expr_Catch(exprBlock).SetDebugInfo(this); 
+			expr = new Expr_Catch(this, exprBlock); 
 		} else if (StartOf(9)) {
 			Literal(ref expr);
 		} else if (la.kind == 10) {
@@ -701,7 +701,7 @@ const int // types
 		}
 		Expect(11);
 		EmbeddedStat(ref body);
-		expr = new Expr_For(sym, minExpr, maxExpr, stepExpr, body).SetDebugInfo(this); 
+		expr = new Expr_For(this, sym, minExpr, maxExpr, stepExpr, body); 
 	}
 
 	void EmbeddedStat(ref IExpr expr) {
@@ -722,7 +722,7 @@ const int // types
 			Expr(ref cond);
 			Expect(11);
 			EmbeddedStat(ref trueCase);
-			ifExpr = new Expr_If(cond, trueCase); ifExpr.SetDebugInfo(this); expr = ifExpr; 
+			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
 			if (la.kind == 59) {
 				Get();
 				EmbeddedStat(ref falseCase);
@@ -741,13 +741,13 @@ const int // types
 		case 60: {
 			Get();
 			Expect(18);
-			expr = new Expr_Break().SetDebugInfo(this); 
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 61: {
 			Get();
 			Expect(18);
-			expr = new Expr_Continue().SetDebugInfo(this); 
+			expr = new Expr_Continue(this); 
 			break;
 		}
 		case 62: {
@@ -756,7 +756,7 @@ const int // types
 				Expr(ref cond);
 			}
 			Expect(18);
-			expr = new Expr_Return(cond).SetDebugInfo(this); 
+			expr = new Expr_Return(this, cond); 
 			break;
 		}
 		case 18: {
@@ -778,7 +778,7 @@ const int // types
 		Expr(ref sym);
 		Expect(11);
 		EmbeddedStat(ref body);
-		Expr_ForEach forEachExpr = new Expr_ForEach(sym, kIdent, vIdent, body); forEachExpr.SetDebugInfo(this); expr = forEachExpr; 
+		Expr_ForEach forEachExpr = new Expr_ForEach(this, sym, kIdent, vIdent, body); expr = forEachExpr; 
 	}
 
 	void TypeAliasStat(ref IExpr expr) {
@@ -787,7 +787,7 @@ const int // types
 		Ident(ref ident);
 		Expect(7);
 		TypeSpecifier(ref typeRef);
-		Expr_TypeAlias taExpr = new Expr_TypeAlias(ident, typeRef); taExpr.SetDebugInfo(this); expr = taExpr; taExpr.PreRegister(context); 
+		Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; taExpr.PreRegister(context); 
 	}
 
 	void Stat(ref IExpr expr) {
@@ -811,7 +811,7 @@ const int // types
 			Expr(ref cond);
 			Expect(11);
 			EmbeddedStat(ref trueCase);
-			ifExpr = new Expr_If(cond, trueCase); ifExpr.SetDebugInfo(this); expr = ifExpr; 
+			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
 			if (la.kind == 59) {
 				Get();
 				EmbeddedStat(ref falseCase);
@@ -830,13 +830,13 @@ const int // types
 		case 60: {
 			Get();
 			Expect(18);
-			expr = new Expr_Break().SetDebugInfo(this); 
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 61: {
 			Get();
 			Expect(18);
-			expr = new Expr_Continue().SetDebugInfo(this); 
+			expr = new Expr_Continue(this); 
 			break;
 		}
 		case 62: {
@@ -845,7 +845,7 @@ const int // types
 				Expr(ref cond);
 			}
 			Expect(18);
-			expr = new Expr_Return(cond).SetDebugInfo(this); 
+			expr = new Expr_Return(this, cond); 
 			break;
 		}
 		case 70: {
@@ -887,7 +887,7 @@ const int // types
 		}
 		Expect(67);
 		Expect(1);
-		scope = new Expr_Class(t.val); scope.SetDebugInfo(this); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; 
+		scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; 
 		if (la.kind == 26) {
 			Get();
 			Expect(1);
@@ -919,7 +919,7 @@ const int // types
 		TypeSpecifier(ref enumType);
 		Expect(6);
 		Expect(1);
-		exprName = t.val; e = new Expr_Enum(exprName, enumType); e.SetDebugInfo(this); expr = e; 
+		exprName = t.val; e = new Expr_Enum(this, exprName, enumType); expr = e; 
 		Expect(63);
 		if (la.kind == 1) {
 			Ident(ref valName);
@@ -960,9 +960,9 @@ const int // types
 			Get();
 		} else SynErr(82);
 		#if PEBBLE_ASSERTOFF
-			expr = new Expr_Literal(true, IntrinsicTypeDefs.BOOL);
+			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
 		#else
-			expr = new Expr_Assert(conditionExpr, messageExpr, block, true).SetDebugInfo(this);
+			expr = new Expr_Assert(this, conditionExpr, messageExpr, block, true);
 		#endif
 		
 	}
@@ -976,7 +976,7 @@ const int // types
 				_headExpr = _nextExpr;
 			else {
 				if (null == list) {
-					list = new Expr_ExprList(); list.SetDebugInfo(this);
+					list = new Expr_ExprList(this);
 					list.createScope = false;
 					list.nodes.Add(_headExpr);
 					_headExpr = list;

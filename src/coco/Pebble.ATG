@@ -216,13 +216,13 @@ Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; ITypeRe
 	( TypeSpecifier<ref type> | "void" (. type = new TypeRef("void"); .) )		(. if (null != type) type.SetConst(mods._const); .) // Unsure why I have to do the null check there, but compiler crashes on some syntax errors if I don't. (eg. "num const;")
 	Ident<ref sym> 
 	(	
-		(. expr = new Expr_Set(type, sym, mods).SetDebugInfo(this); .)
+		(. expr = new Expr_Set(this, type, sym, mods); .)
 		[(
-			'=' ( "new"	[TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. value = new Expr_New(null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); value.SetDebugInfo(this); .)
+			'=' ( "new"	[TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. value = new Expr_New(this, null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); .)
 				| AssignExpr<ref init>					(. ((Expr_Set)expr).SetValue(init); .) 
 				)
 		|
-			"<-" Expr<ref script>						(. expr = new Expr_ScriptToValue(expr, script).SetDebugInfo(this); .) 
+			"<-" Expr<ref script>						(. expr = new Expr_ScriptToValue(this, expr, script); .) 
 		)] 
 		';'
 	|
@@ -232,7 +232,7 @@ Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; ITypeRe
 			{ ',' FunctionDeclArg<ref argTypes, ref argNames, ref defaultValues> }
 		]
 		')' 
-		StatementBlock<ref body>						(. expr = Expr_Set.CreateFunctionLiteral(type, sym, argTypes, defaultValues, argNames, body, mods); expr.SetDebugInfo(this); ((Expr_Set)expr).value.SetDebugInfo(this); .) 
+		StatementBlock<ref body>						(. expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); .) 
 	).	
 
 
@@ -247,55 +247,55 @@ Expr<ref IExpr expr>
 
 AssignExpr<ref IExpr expr>		(. IExpr expr1 = null, expr2 = null; .)
 =	CondExpr<ref expr1>			(. expr = expr1; .)
-	[( '=' Expr<ref expr2>		(. expr = new Expr_Assign(expr1, expr2).SetDebugInfo(this); .) 
-	 | "+=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.ADD, expr1, expr2)).SetDebugInfo(this); .) 
-	 | "-=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.SUB, expr1, expr2)).SetDebugInfo(this); .) 
-	 | "*=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.MULT, expr1, expr2)).SetDebugInfo(this); .) 
-	 | "/=" Expr<ref expr2>		(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.DIV, expr1, expr2)).SetDebugInfo(this); .) 
-	 | "..=" Expr<ref expr2>	(. expr = new Expr_Assign(expr1, new Expr_BinOp(Expr_BinOp.OP.CONCAT, expr1, expr2)).SetDebugInfo(this); .)
-	 | "<<" Expr<ref expr2>		(. expr = new Expr_Stream(expr1, expr2).SetDebugInfo(this); .) 
+	[( '=' Expr<ref expr2>		(. expr = new Expr_Assign(this, expr1, expr2); .) 
+	 | "+=" Expr<ref expr2>		(. expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr1, expr2)); .) 
+	 | "-=" Expr<ref expr2>		(. expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr1, expr2)); .) 
+	 | "*=" Expr<ref expr2>		(. expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr1, expr2)); .) 
+	 | "/=" Expr<ref expr2>		(. expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr1, expr2)); .) 
+	 | "..=" Expr<ref expr2>	(. expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr1, expr2)); .)
+	 | "<<" Expr<ref expr2>		(. expr = new Expr_Stream(this, expr1, expr2); .) 
 	)].
 
 CondExpr<ref IExpr expr>								(. IExpr expr1 = null, expr2 = null, expr3 = null; .)
 =	LogOrExpr<ref expr1>								(. expr = expr1; .)
-	['?' Expr<ref expr2> ':' CondExpr<ref expr3>		(. expr = new Expr_Conditional(expr1, expr2, expr3).SetDebugInfo(this); .) ].
+	['?' Expr<ref expr2> ':' CondExpr<ref expr3>		(. expr = new Expr_Conditional(this, expr1, expr2, expr3); .) ].
 
 LogOrExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
 =	LogAndExpr<ref expr1>					(. expr = expr1; .)
-	{"||" LogAndExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.OR, expr, expr2).SetDebugInfo(this); .) }.
+	{"||" LogAndExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.OR, expr, expr2); .) }.
 
 LogAndExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
 =	EqlExpr<ref expr1>						(. expr = expr1; .)
-	{"&&" EqlExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.AND, expr, expr2).SetDebugInfo(this); .) }.
+	{"&&" EqlExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.AND, expr, expr2); .) }.
 
 EqlExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
 =	RelExpr<ref expr1>						(. expr = expr1; .)
-	{("==" RelExpr<ref expr2>				(. expr = new Expr_Compare(expr, expr2, false).SetDebugInfo(this); .)
-	 |"!=" RelExpr<ref expr2>				(. expr = new Expr_Compare(expr, expr2, true).SetDebugInfo(this);  .)
-	 |"<-" RelExpr<ref expr2>				(. expr = new Expr_ScriptToValue(expr, expr2).SetDebugInfo(this);	.)
+	{("==" RelExpr<ref expr2>				(. expr = new Expr_Compare(this, expr, expr2, false); .)
+	 |"!=" RelExpr<ref expr2>				(. expr = new Expr_Compare(this, expr, expr2, true);  .)
+	 |"<-" RelExpr<ref expr2>				(. expr = new Expr_ScriptToValue(this, expr, expr2);	.)
 	 )}.
 
 RelExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
 =	AddExpr<ref expr1>						(. expr = expr1; .)
-	{('<' AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.LT, expr, expr2).SetDebugInfo(this); .)
-	 |'>' AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.GT, expr, expr2).SetDebugInfo(this); .)
-	 |"<=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.LEQ, expr, expr2).SetDebugInfo(this); .)
-	 |">=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.GEQ, expr, expr2).SetDebugInfo(this); .)
-	 |"~=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.STREQI, expr, expr2).SetDebugInfo(this); .)
+	{('<' AddExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.LT, expr, expr2); .)
+	 |'>' AddExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.GT, expr, expr2); .)
+	 |"<=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.LEQ, expr, expr2); .)
+	 |">=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.GEQ, expr, expr2); .)
+	 |"~=" AddExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.STREQI, expr, expr2); .)
 	 )}.
 
 AddExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
 =	MultExpr<ref expr1>						(. expr = expr1; .)
-	{('+' MultExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.ADD, expr, expr2).SetDebugInfo(this); .)
-	 |'-' MultExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.SUB, expr, expr2).SetDebugInfo(this); .)
-	 |".." MultExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.CONCAT, expr, expr2).SetDebugInfo(this); .)
+	{('+' MultExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr, expr2); .)
+	 |'-' MultExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr, expr2); .)
+	 |".." MultExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr, expr2); .)
 	 )}.
 
 MultExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
 =	CastExpr<ref expr1>						(. expr = expr1; .)
-	{('*' CastExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.MULT, expr, expr2).SetDebugInfo(this); .)
-	 |'/' CastExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.DIV, expr, expr2).SetDebugInfo(this); .)
-	 |'%' CastExpr<ref expr2>				(. expr = new Expr_BinOp(Expr_BinOp.OP.MOD, expr, expr2).SetDebugInfo(this); .)
+	{('*' CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr, expr2); .)
+	 |'/' CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr, expr2); .)
+	 |'%' CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.MOD, expr, expr2); .)
 	 )}.
 
 CastExpr<ref IExpr expr>   
@@ -309,53 +309,53 @@ UnaryExpr<ref IExpr expr>					(. List<int> li = new List<int>(); .)
 	)}					
 	UnaryPost<ref expr>						(.	for (int i = li.Count - 1; i >= 0; --i) {
 													if (0 == li[i])
-														expr = Expr_Assign.CreateInc(expr).SetDebugInfo(this); 
+														expr = Expr_Assign.CreateInc(this, expr); 
 													else if (1 == li[i])
-														expr = Expr_Assign.CreateDec(expr).SetDebugInfo(this); 
+														expr = Expr_Assign.CreateDec(this, expr); 
 													else if (2 == li[i])
-														expr = new Expr_Length(expr).SetDebugInfo(this); 
+														expr = new Expr_Length(this, expr); 
 													else if (3 == li[i])
-														expr = new Expr_UnOp(Expr_UnOp.OP.TOSTRING, expr).SetDebugInfo(this);	
+														expr = new Expr_UnOp(this, Expr_UnOp.OP.TOSTRING, expr);	
 												}
 	.) .
 
 
 UnaryPost<ref IExpr expr>						(. ITypeRef valType = null; IExpr initializer = null; .)
 =	( PostfixExpr<ref expr>
-	| '+' CastExpr<ref expr>					(. expr = new Expr_UnOp(Expr_UnOp.OP.POS, expr).SetDebugInfo(this); .)
-	| '-' CastExpr<ref expr>					(. expr = new Expr_UnOp(Expr_UnOp.OP.NEG, expr).SetDebugInfo(this); .)
-	| '!' CastExpr<ref expr>					(. expr = new Expr_UnOp(Expr_UnOp.OP.NOT, expr).SetDebugInfo(this); .)
-	| "new" [TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. expr = new Expr_New(valType, initializer).SetDebugInfo(this); .)
+	| '+' CastExpr<ref expr>					(. expr = new Expr_UnOp(this, Expr_UnOp.OP.POS, expr); .)
+	| '-' CastExpr<ref expr>					(. expr = new Expr_UnOp(this, Expr_UnOp.OP.NEG, expr); .)
+	| '!' CastExpr<ref expr>					(. expr = new Expr_UnOp(this, Expr_UnOp.OP.NOT, expr); .)
+	| "new" [TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, initializer); .)
 	).
 
 PostfixExpr<ref IExpr expr>					(. ExprList args = null; IExpr indexExpr = null; .)
 =	Primary<ref expr>
-	{ '[' Expr<ref indexExpr> ']'			(. expr = new Expr_Index(expr, indexExpr).SetDebugInfo(this); .)
-	| '.'  ident							(. expr = new Expr_Dot(expr, t.val).SetDebugInfo(this); .)
-	| '(' [ArgExprList<ref args>] ')'		(. expr = new Expr_Call(expr, args).SetDebugInfo(this); args = null; .) /* Unsure why, but without setting args to null there there is some sort of recursion problem and args appear in function calls they shouldn't. */
-	| "++"									(. expr = new Expr_Postrement(expr, false).SetDebugInfo(this); .)
-	| "--"									(. expr = new Expr_Postrement(expr, true).SetDebugInfo(this); .)
+	{ '[' Expr<ref indexExpr> ']'			(. expr = new Expr_Index(this, expr, indexExpr); .)
+	| '.'  ident							(. expr = new Expr_Dot(this, expr, t.val); .)
+	| '(' [ArgExprList<ref args>] ')'		(. expr = new Expr_Call(this, expr, args); args = null; .) /* Unsure why, but without setting args to null there there is some sort of recursion problem and args appear in function calls they shouldn't. */
+	| "++"									(. expr = new Expr_Postrement(this, expr, false); .)
+	| "--"									(. expr = new Expr_Postrement(this, expr, true); .)
 	}.
 
 //Primary = ident | intcon | floatcon | charcon | string | '(' Expr ')'.
 Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = null; .)
 =	( 
-	(IF(IsScopeOpStart()) Ident<ref className> "::" ident	(. expr = new Expr_Scope(className, t.val).SetDebugInfo(this); .) )
-	| "::" ident											(. expr = new Expr_Scope(null, t.val).SetDebugInfo(this); .)
-	| ident													(. expr = new Expr_Symbol(t.val).SetDebugInfo(this); .)
-	| "this"												(. expr = new Expr_This().SetDebugInfo(this); .)
-	| "catch" StatementBlock<ref exprBlock> 				(. expr = new Expr_Catch(exprBlock).SetDebugInfo(this); .)
+	(IF(IsScopeOpStart()) Ident<ref className> "::" ident	(. expr = new Expr_Scope(this, className, t.val); .) )
+	| "::" ident											(. expr = new Expr_Scope(this, null, t.val); .)
+	| ident													(. expr = new Expr_Symbol(this, t.val); .)
+	| "this"												(. expr = new Expr_This(this); .)
+	| "catch" StatementBlock<ref exprBlock> 				(. expr = new Expr_Catch(this, exprBlock); .)
 	//| Test<ref expr>
 	| Literal<ref expr>
 	| '(' Expr<ref expr> ')'
 	).
 
 Literal<ref IExpr expr>
-=	( "true"								(. expr = new Expr_Literal(true, IntrinsicTypeDefs.BOOL).SetDebugInfo(this); .)
-	| "false"								(. expr = new Expr_Literal(false, IntrinsicTypeDefs.BOOL).SetDebugInfo(this); .)
-	| "null"								(. expr = new Expr_Literal(null, IntrinsicTypeDefs.NULL).SetDebugInfo(this); .)
-	| number								(. expr = new Expr_Literal(Convert.ToDouble(t.val), IntrinsicTypeDefs.NUMBER).SetDebugInfo(this); .)
-	| StringLiteral							(. expr = new Expr_Literal(t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING).SetDebugInfo(this); .)
+=	( "true"								(. expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL); .)
+	| "false"								(. expr = new Expr_Literal(this, false, IntrinsicTypeDefs.BOOL); .)
+	| "null"								(. expr = new Expr_Literal(this, null, IntrinsicTypeDefs.NULL); .)
+	| number								(. expr = new Expr_Literal(this, Convert.ToDouble(t.val), IntrinsicTypeDefs.NUMBER); .)
+	| StringLiteral							(. expr = new Expr_Literal(this, t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING); .)
 	).
 
 // This is useful for productions that require two strings, so they can't both use t.val.
@@ -373,15 +373,15 @@ ArgExprList<ref ExprList args>		(. args = new ExprList(); IExpr arg1 = null, arg
 
 ForExpr<ref IExpr expr>			(. string sym = null; IExpr minExpr = null; IExpr maxExpr = null; IExpr body = null; IExpr stepExpr = null; .)
 =	"for" '(' Ident<ref sym> '=' Expr<ref minExpr> ',' Expr<ref maxExpr> [ ',' Expr<ref stepExpr> ]	')' 
-		EmbeddedStat<ref body>							(. expr = new Expr_For(sym, minExpr, maxExpr, stepExpr, body).SetDebugInfo(this); .) .
+		EmbeddedStat<ref body>							(. expr = new Expr_For(this, sym, minExpr, maxExpr, stepExpr, body); .) .
 
 
 ForEachExpr<ref IExpr expr>		(. string kIdent = null, vIdent = null; IExpr sym = null, body = null; .)
 =	"foreach" '(' Ident<ref kIdent> ',' Ident<ref vIdent> "in" Expr<ref sym> ')' 
-		EmbeddedStat<ref body>							(. Expr_ForEach forEachExpr = new Expr_ForEach(sym, kIdent, vIdent, body); forEachExpr.SetDebugInfo(this); expr = forEachExpr; .) .
+		EmbeddedStat<ref body>							(. Expr_ForEach forEachExpr = new Expr_ForEach(this, sym, kIdent, vIdent, body); expr = forEachExpr; .) .
 
 TypeAliasStat<ref IExpr expr>	(. ITypeRef typeRef = null; string ident = null; .)
-=	"typealias" Ident<ref ident> '=' TypeSpecifier<ref typeRef>	(. Expr_TypeAlias taExpr = new Expr_TypeAlias(ident, typeRef); taExpr.SetDebugInfo(this); expr = taExpr; taExpr.PreRegister(context); .) .
+=	"typealias" Ident<ref ident> '=' TypeSpecifier<ref typeRef>	(. Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; taExpr.PreRegister(context); .) .
 
 
 //--------------------------------
@@ -392,13 +392,13 @@ Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExp
 =	StatementBlock<ref expr>
 	| Class<ref expr>
 	| Enum<ref expr>
-	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(cond, trueCase); ifExpr.SetDebugInfo(this); expr = ifExpr; .)
+	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
 		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ]
 	| ForExpr<ref expr>
 	| ForEachExpr<ref expr>
-	| "break" ';'												(. expr = new Expr_Break().SetDebugInfo(this); .)
-	| "continue" ';'											(. expr = new Expr_Continue().SetDebugInfo(this); .)
-	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(cond).SetDebugInfo(this); .)
+	| "break" ';'												(. expr = new Expr_Break(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
 	| Assert<ref expr>
 	| TypeAliasStat<ref expr> ';'
 	| (IF(IsDecl()) Decl<ref expr> | Expr<ref expr> ';' )
@@ -408,7 +408,7 @@ Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExp
 // A series of Statements.  Has value: the value of the final Statement.
 // What is it's value if it has no Statements, though?!
 StatementBlock<ref IExpr exprBlock>
-=						(.	Expr_ExprList block = new Expr_ExprList(); block.SetDebugInfo(this);
+=						(.	Expr_ExprList block = new Expr_ExprList(this);
 							exprBlock = block;
 							IExpr expr = null; 
 						.)
@@ -421,13 +421,13 @@ StatementBlock<ref IExpr exprBlock>
 EmbeddedStat<ref IExpr expr>									(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
 =	( StatementBlock<ref expr>
 	| Expr<ref expr> ';'
-	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(cond, trueCase); ifExpr.SetDebugInfo(this); expr = ifExpr; .)
+	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
 		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ] 
 	| ForExpr<ref expr>
 	| ForEachExpr<ref expr>
-	| "break" ';'												(. expr = new Expr_Break().SetDebugInfo(this); .)
-	| "continue" ';'											(. expr = new Expr_Continue().SetDebugInfo(this); .)
-	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(cond).SetDebugInfo(this); .)
+	| "break" ';'												(. expr = new Expr_Break(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
 	| ';'
 	).
 
@@ -436,7 +436,7 @@ Class<ref IExpr expr>							(. Expr_Class scope = null; bool isSealed = false; b
 =	{ "sealed"									(. isSealed = true; .)
 	 |"uninstantiable"							(. isUninstantiable = true; .) 
 	}
-	"class" ident								(. scope = new Expr_Class(t.val); scope.SetDebugInfo(this); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; .)
+	"class" ident								(. scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; .)
 		[ ':' ident								(. scope.parent = t.val; .) ]
 												(. scope.Register(context); .)
 		[ '{' { 
@@ -447,7 +447,7 @@ Class<ref IExpr expr>							(. Expr_Class scope = null; bool isSealed = false; b
 
 
 Enum<ref IExpr expr>							(. IExpr initializer = null; Expr_Enum e = null; ITypeRef enumType = null; string exprName; string valName = null;.)
-=	"enum" '<' TypeSpecifier<ref enumType> '>' ident  (. exprName = t.val; e = new Expr_Enum(exprName, enumType); e.SetDebugInfo(this); expr = e; .)
+=	"enum" '<' TypeSpecifier<ref enumType> '>' ident  (. exprName = t.val; e = new Expr_Enum(this, exprName, enumType); expr = e; .)
 	'{' [
 		Ident<ref valName> [ '=' Expr<ref initializer> ]								(. e.AddValue(valName, initializer); initializer = null; .) 
 		{
@@ -459,9 +459,9 @@ Assert<ref IExpr expr>		(. IExpr conditionExpr = null; IExpr messageExpr = null;
 = "assert" '(' Expr<ref conditionExpr> {',' Expr<ref messageExpr> } ')' ( StatementBlock<ref block> | ';' )
 	(. 
 #if PEBBLE_ASSERTOFF
-		expr = new Expr_Literal(true, IntrinsicTypeDefs.BOOL);
+		expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
 #else
-		expr = new Expr_Assert(conditionExpr, messageExpr, block, true).SetDebugInfo(this);
+		expr = new Expr_Assert(this, conditionExpr, messageExpr, block, true);
 #endif
 	.) .
 
@@ -479,7 +479,7 @@ Pebble
 										_headExpr = _nextExpr;
 									else {
 										if (null == list) {
-											list = new Expr_ExprList(); list.SetDebugInfo(this);
+											list = new Expr_ExprList(this);
 											list.createScope = false;
 											list.nodes.Add(_headExpr);
 											_headExpr = list;

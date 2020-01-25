@@ -262,7 +262,7 @@ namespace Pebble {
 		// value at compile time.
 		public bool AddMemberLiteral(string name, ITypeDef typeDef, object value, bool isStatic = false) {
 			Pb.Assert(null != typeDef);
-			return AddMember(name, typeDef, new Expr_Value(value, typeDef), isStatic);
+			return AddMember(name, typeDef, new Expr_Value(null, value, typeDef), isStatic);
 		}
 
 		// Use to add an override of a member function.
