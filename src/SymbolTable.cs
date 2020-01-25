@@ -506,12 +506,14 @@ namespace Pebble {
 			return new VarStackRef(type, -1, _varCount - _callStack[_callCount - 1].varStackStart - 1);
 		}
 
-		public ClassDef GetCurrentClassDef() {
+		public ClassDef GetCurrentClassDef(bool noStatics = false) {
 			int iCall = _callCount;
 			while (--iCall >= 0) {
-				if (null != _callStack[iCall].classDef)
+				if (null != _callStack[iCall].classDef) {
+					if (_callStack[iCall].isStatic && noStatics)
+						return null;
 					return _callStack[iCall].classDef;
-				else if (null != _callStack[iCall].classInstance)
+				} else if (null != _callStack[iCall].classInstance)
 					return _callStack[iCall].classInstance.classDef;
 				else if (_callStack[iCall].terminal)
 					return null;

@@ -896,6 +896,24 @@ Debug::TimerStart();
 		}
 	}
 	
+	// * this
+	{
+		// The "this" keyword is a reference to the current class instance. It can only be used within non-static class code, ie. member initializers and functions.
+		
+		// "this" doesn't let you do much that you couldn't do without it, but one nifty thing you can do with it is have member functions that return the class instance so that you can chain function calls.
+		class ThisTest {
+			num sum = 0;
+
+			ThisTest Add(num n) {
+				this.sum += n;	// <- this "this" is unnecessary
+				return this;
+			}
+		};
+		
+		ThisTest tt = new;
+		tt.Add(1).Add(2).Add(3);
+		assert(6 == tt.sum);
+	}
 	
 	// * Statics
 	{

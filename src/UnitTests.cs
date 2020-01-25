@@ -854,7 +854,7 @@ namespace Pebble {
 				{"return true;", ParseErrorType.ReturnNotInCall},
 				{"{ num poop() { return true; }; }", ParseErrorType.ReturnTypeMismatch},
 				{"{ num poop() { string poopy() { return 0; }; }; }", ParseErrorType.ReturnTypeMismatch},
-				{"class RetTest { return null; };", ParseErrorType.SyntaxError}, 
+				{"class RetTest { return null; };", ParseErrorType.SyntaxError},
 				{"void poop() { return true; };", ParseErrorType.ReturnValueInVoidFunction},
 				{"num poop() { return; };", ParseErrorType.ReturnNullInNonVoidFunction},
 					
@@ -895,9 +895,13 @@ namespace Pebble {
 				{"class ArgumentStaticFieldShadowing { static num x; static num F(num x) { x; } };", ParseErrorType.SymbolAlreadyDeclared},
 				
 				// this
-				// Using this outside of class scope.
+				// - Using "this" outside of class scope.
 				{"this;", ParseErrorType.ClassRequiredForThis},
 				{"num ThisFunc() { this; }", ParseErrorType.ClassRequiredForThis},
+				// - Using "this" to reference statics
+				{"class BadThis { static num a; num GetA() { this.a; } };", ParseErrorType.ClassMemberNotFound},
+				{"class BadThis2 { static BadThis2 GetThis() { this; } };", ParseErrorType.ClassRequiredForThis},
+				{"class BadThis3 { num n; static num F() { this.n; } };", ParseErrorType.ClassRequiredForThis},
 
 				// Polymorphism
 				// assigning value of parent type to child variable

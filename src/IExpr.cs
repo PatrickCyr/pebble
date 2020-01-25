@@ -2973,7 +2973,7 @@ namespace Pebble {
 
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
 
-			ClassDef classDef = context.stack.GetCurrentClassDef();
+			ClassDef classDef = context.stack.GetCurrentClassDef(true);
 			if (null == classDef) {
 				error = true;
 				LogCompileErr(context, ParseErrorType.ClassRequiredForThis, "this keyword must be in class scope.");
