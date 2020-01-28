@@ -910,6 +910,7 @@ namespace Pebble {
 				// Bad uses of new.
 				{"{ num notnew; notnew = new; }", ParseErrorType.ReferenceOfNonReferenceType},
 				{"{ void FFFF(O o) { }  FFFF(new); }", ParseErrorType.NewTypeCannotBeInferred},
+				{"List<M> lm = new List<N>;", ParseErrorType.TypeMismatch},
 
 				// Initializers
 				{"{ N nn = new N { num strandedNum; }; strandedNum; }", ParseErrorType.SymbolNotFound},

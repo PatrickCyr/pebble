@@ -169,13 +169,15 @@ TypeSpecifier<ref ITypeRef type>
 	| TypeSpecifierNoFunc<ref type>
     )												(. if (isConst) type.SetConst(true); .) .
 
+// Use this for any type specifier BUT function types.
+// Re: LL1 warning in TypeSpecifierNoFunc: "<" is start and successor of a deletable structure
+//   This is because in this "new A < ", the parser isn't sure if this is "(new A) <" or the start of a template "new A<num>".
+//   Because < is cannot operate on anything that can be produced by new, this is never an actual problem.
 TypeSpecifierNoFunc<ref ITypeRef type> =			(. string className = null; ITypeRef genType = null; TypeRefList genericTypes = new TypeRefList(); .)
 	 ident											(. className = t.val; .)
 		['<' TypeSpecifier<ref genType>				(. genericTypes.Add(genType); .)
 			{',' TypeSpecifier<ref genType>			(. genericTypes.Add(genType); .) }
-		'>'											
-		]											
-													(. type = new TypeRef(className, genericTypes); .) .
+		'>']										(. type = new TypeRef(className, genericTypes); .) .
 
 FunctionTypeArg<ref TypeRefList argTypes, ref LiteralList defaultValues>	(. ITypeRef argType = null; IExpr litValue = null; .)
 =	TypeSpecifier<ref argType>						(. argTypes.Add(argType); .)
@@ -206,7 +208,7 @@ FunctionDeclArg<ref TypeRefList argTypes, ref StrList argNames, ref LiteralList 
 														defaultValues[defaultValues.Count - 1] = (Expr_Literal) litValue; .) 
 	]. 
 
-Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; ITypeRef valType = null; IExpr value = null; IExpr init = null; IExpr initializer = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); .)
+Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; ITypeRef valType = null; IExpr init = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); .)
 =	{
 		 "const"		(. mods._const = true; .)
 		| "global"		(. mods._global = true; .)
@@ -218,9 +220,11 @@ Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; ITypeRe
 	(	
 		(. expr = new Expr_Set(this, type, sym, mods); .)
 		[(
-			'=' ( "new"	[TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. value = new Expr_New(this, null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); .)
-				| AssignExpr<ref init>					(. ((Expr_Set)expr).SetValue(init); .) 
-				)
+			'=' AssignExpr<ref init>					
+				(.	((Expr_Set)expr).SetValue(init); 
+					if (init is Expr_New && null == ((Expr_New)init).typeRef)
+						((Expr_New)init).typeRef = type;
+				.) 
 		|
 			"<-" Expr<ref script>						(. expr = new Expr_ScriptToValue(this, expr, script); .) 
 		)] 
@@ -320,12 +324,11 @@ UnaryExpr<ref IExpr expr>					(. List<int> li = new List<int>(); .)
 	.) .
 
 
-UnaryPost<ref IExpr expr>						(. ITypeRef valType = null; IExpr initializer = null; .)
+UnaryPost<ref IExpr expr>						(. .)
 =	( PostfixExpr<ref expr>
 	| '+' CastExpr<ref expr>					(. expr = new Expr_UnOp(this, Expr_UnOp.OP.POS, expr); .)
 	| '-' CastExpr<ref expr>					(. expr = new Expr_UnOp(this, Expr_UnOp.OP.NEG, expr); .)
 	| '!' CastExpr<ref expr>					(. expr = new Expr_UnOp(this, Expr_UnOp.OP.NOT, expr); .)
-	| "new" [TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, initializer); .)
 	).
 
 PostfixExpr<ref IExpr expr>					(. ExprList args = null; IExpr indexExpr = null; .)
@@ -338,7 +341,7 @@ PostfixExpr<ref IExpr expr>					(. ExprList args = null; IExpr indexExpr = null;
 	}.
 
 //Primary = ident | intcon | floatcon | charcon | string | '(' Expr ')'.
-Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = null; .)
+Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = null; ITypeRef valType = null; IExpr initializer = null; .)
 =	( 
 	(IF(IsScopeOpStart()) Ident<ref className> "::" ident	(. expr = new Expr_Scope(this, className, t.val); .) )
 	| "::" ident											(. expr = new Expr_Scope(this, null, t.val); .)
@@ -348,6 +351,7 @@ Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = n
 	//| Test<ref expr>
 	| Literal<ref expr>
 	| '(' Expr<ref expr> ')'
+	| "new" [TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, initializer); .)
 	).
 
 Literal<ref IExpr expr>
@@ -418,6 +422,9 @@ StatementBlock<ref IExpr exprBlock>
 
 
 // This is the type of statement that could be, for example, the body of a for or if statement.
+// Re: LL1 warning in EmbeddedStat: "else" is start and successor of deletable structure
+//   This warning is because in this expression "if (b) if (c) else d;" it is ambiguous which if the else belongs to. 
+//   It doesn't matter: whichever Coco chooses, it should be consistent, and besides anyone who codes like this is playing with fire anyway.
 EmbeddedStat<ref IExpr expr>									(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
 =	( StatementBlock<ref expr>
 	| Expr<ref expr> ';'

@@ -287,7 +287,7 @@ const int // types
 	}
 
 	void Decl(ref IExpr expr) {
-		string sym = null; ITypeRef type = null; ITypeRef valType = null; IExpr value = null; IExpr init = null; IExpr initializer = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); 
+		string sym = null; ITypeRef type = null; ITypeRef valType = null; IExpr init = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); 
 		while (StartOf(1)) {
 			if (la.kind == 12) {
 				Get();
@@ -311,31 +311,23 @@ const int // types
 		} else SynErr(75);
 		if (null != type) type.SetConst(mods._const); 
 		Ident(ref sym);
-		if (la.kind == 7 || la.kind == 17 || la.kind == 18) {
+		if (la.kind == 7 || la.kind == 16 || la.kind == 17) {
 			expr = new Expr_Set(this, type, sym, mods); 
-			if (la.kind == 7 || la.kind == 17) {
+			if (la.kind == 7 || la.kind == 16) {
 				if (la.kind == 7) {
 					Get();
-					if (la.kind == 16) {
-						Get();
-						if (la.kind == 1) {
-							TypeSpecifierNoFunc(ref valType);
-						}
-						if (la.kind == 63) {
-							StatementBlock(ref initializer);
-						}
-						value = new Expr_New(this, null != valType ? valType : type, initializer); ((Expr_Set)expr).SetValue(value); 
-					} else if (StartOf(2)) {
-						AssignExpr(ref init);
-						((Expr_Set)expr).SetValue(init); 
-					} else SynErr(76);
+					AssignExpr(ref init);
+					((Expr_Set)expr).SetValue(init); 
+					if (init is Expr_New && null == ((Expr_New)init).typeRef)
+					((Expr_New)init).typeRef = type;
+					
 				} else {
 					Get();
 					Expr(ref script);
 					expr = new Expr_ScriptToValue(this, expr, script); 
 				}
 			}
-			Expect(18);
+			Expect(17);
 		} else if (la.kind == 10) {
 			Get();
 			if (la.kind == 1 || la.kind == 8) {
@@ -348,12 +340,68 @@ const int // types
 			Expect(11);
 			StatementBlock(ref body);
 			expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); 
-		} else SynErr(77);
+		} else SynErr(76);
 	}
 
 	void Ident(ref string id) {
 		Expect(1);
 		id = t.val; 
+	}
+
+	void AssignExpr(ref IExpr expr) {
+		IExpr expr1 = null, expr2 = null; 
+		CondExpr(ref expr1);
+		expr = expr1; 
+		if (StartOf(2)) {
+			switch (la.kind) {
+			case 7: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Assign(this, expr1, expr2); 
+				break;
+			}
+			case 18: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr1, expr2)); 
+				break;
+			}
+			case 19: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr1, expr2)); 
+				break;
+			}
+			case 20: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr1, expr2)); 
+				break;
+			}
+			case 21: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr1, expr2)); 
+				break;
+			}
+			case 22: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr1, expr2)); 
+				break;
+			}
+			case 23: {
+				Get();
+				Expr(ref expr2);
+				expr = new Expr_Stream(this, expr1, expr2); 
+				break;
+			}
+			}
+		}
+	}
+
+	void Expr(ref IExpr expr) {
+		AssignExpr(ref expr);
 	}
 
 	void StatementBlock(ref IExpr exprBlock) {
@@ -369,70 +417,14 @@ const int // types
 		Expect(64);
 	}
 
-	void AssignExpr(ref IExpr expr) {
-		IExpr expr1 = null, expr2 = null; 
-		CondExpr(ref expr1);
-		expr = expr1; 
-		if (StartOf(4)) {
-			switch (la.kind) {
-			case 7: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Assign(this, expr1, expr2); 
-				break;
-			}
-			case 19: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr1, expr2)); 
-				break;
-			}
-			case 20: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr1, expr2)); 
-				break;
-			}
-			case 21: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr1, expr2)); 
-				break;
-			}
-			case 22: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr1, expr2)); 
-				break;
-			}
-			case 23: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr1, expr2)); 
-				break;
-			}
-			case 24: {
-				Get();
-				Expr(ref expr2);
-				expr = new Expr_Stream(this, expr1, expr2); 
-				break;
-			}
-			}
-		}
-	}
-
-	void Expr(ref IExpr expr) {
-		AssignExpr(ref expr);
-	}
-
 	void CondExpr(ref IExpr expr) {
 		IExpr expr1 = null, expr2 = null, expr3 = null; 
 		LogOrExpr(ref expr1);
 		expr = expr1; 
-		if (la.kind == 25) {
+		if (la.kind == 24) {
 			Get();
 			Expr(ref expr2);
-			Expect(26);
+			Expect(25);
 			CondExpr(ref expr3);
 			expr = new Expr_Conditional(this, expr1, expr2, expr3); 
 		}
@@ -442,7 +434,7 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		LogAndExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 27) {
+		while (la.kind == 26) {
 			Get();
 			LogAndExpr(ref expr2);
 			expr = new Expr_BinOp(this, Expr_BinOp.OP.OR, expr, expr2); 
@@ -453,7 +445,7 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		EqlExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 28) {
+		while (la.kind == 27) {
 			Get();
 			EqlExpr(ref expr2);
 			expr = new Expr_BinOp(this, Expr_BinOp.OP.AND, expr, expr2); 
@@ -464,12 +456,12 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		RelExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 17 || la.kind == 29 || la.kind == 30) {
-			if (la.kind == 29) {
+		while (la.kind == 16 || la.kind == 28 || la.kind == 29) {
+			if (la.kind == 28) {
 				Get();
 				RelExpr(ref expr2);
 				expr = new Expr_Compare(this, expr, expr2, false); 
-			} else if (la.kind == 30) {
+			} else if (la.kind == 29) {
 				Get();
 				RelExpr(ref expr2);
 				expr = new Expr_Compare(this, expr, expr2, true);  
@@ -485,7 +477,7 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		AddExpr(ref expr1);
 		expr = expr1; 
-		while (StartOf(5)) {
+		while (StartOf(4)) {
 			if (la.kind == 4) {
 				Get();
 				AddExpr(ref expr2);
@@ -494,11 +486,11 @@ const int // types
 				Get();
 				AddExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.GT, expr, expr2); 
-			} else if (la.kind == 31) {
+			} else if (la.kind == 30) {
 				Get();
 				AddExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.LEQ, expr, expr2); 
-			} else if (la.kind == 32) {
+			} else if (la.kind == 31) {
 				Get();
 				AddExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.GEQ, expr, expr2); 
@@ -514,12 +506,12 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		MultExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 34 || la.kind == 35 || la.kind == 36) {
-			if (la.kind == 34) {
+		while (la.kind == 33 || la.kind == 34 || la.kind == 35) {
+			if (la.kind == 33) {
 				Get();
 				MultExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr, expr2); 
-			} else if (la.kind == 35) {
+			} else if (la.kind == 34) {
 				Get();
 				MultExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr, expr2); 
@@ -535,12 +527,12 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		CastExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 37 || la.kind == 38 || la.kind == 39) {
-			if (la.kind == 37) {
+		while (la.kind == 36 || la.kind == 37 || la.kind == 38) {
+			if (la.kind == 36) {
 				Get();
 				CastExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr, expr2); 
-			} else if (la.kind == 38) {
+			} else if (la.kind == 37) {
 				Get();
 				CastExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr, expr2); 
@@ -558,14 +550,14 @@ const int // types
 
 	void UnaryExpr(ref IExpr expr) {
 		List<int> li = new List<int>(); 
-		while (StartOf(6)) {
-			if (la.kind == 40) {
+		while (StartOf(5)) {
+			if (la.kind == 39) {
 				Get();
 				li.Add(0); 
-			} else if (la.kind == 41) {
+			} else if (la.kind == 40) {
 				Get();
 				li.Add(1); 
-			} else if (la.kind == 42) {
+			} else if (la.kind == 41) {
 				Get();
 				li.Add(2); 
 			} else {
@@ -588,54 +580,45 @@ const int // types
 	}
 
 	void UnaryPost(ref IExpr expr) {
-		ITypeRef valType = null; IExpr initializer = null; 
-		if (StartOf(7)) {
+		
+		if (StartOf(6)) {
 			PostfixExpr(ref expr);
-		} else if (la.kind == 34) {
+		} else if (la.kind == 33) {
 			Get();
 			CastExpr(ref expr);
 			expr = new Expr_UnOp(this, Expr_UnOp.OP.POS, expr); 
-		} else if (la.kind == 35) {
+		} else if (la.kind == 34) {
 			Get();
 			CastExpr(ref expr);
 			expr = new Expr_UnOp(this, Expr_UnOp.OP.NEG, expr); 
-		} else if (la.kind == 44) {
+		} else if (la.kind == 43) {
 			Get();
 			CastExpr(ref expr);
 			expr = new Expr_UnOp(this, Expr_UnOp.OP.NOT, expr); 
-		} else if (la.kind == 16) {
-			Get();
-			if (la.kind == 1) {
-				TypeSpecifierNoFunc(ref valType);
-			}
-			if (la.kind == 63) {
-				StatementBlock(ref initializer);
-			}
-			expr = new Expr_New(this, valType, initializer); 
-		} else SynErr(78);
+		} else SynErr(77);
 	}
 
 	void PostfixExpr(ref IExpr expr) {
 		ExprList args = null; IExpr indexExpr = null; 
 		Primary(ref expr);
-		while (StartOf(8)) {
-			if (la.kind == 45) {
+		while (StartOf(7)) {
+			if (la.kind == 44) {
 				Get();
 				Expr(ref indexExpr);
-				Expect(46);
+				Expect(45);
 				expr = new Expr_Index(this, expr, indexExpr); 
-			} else if (la.kind == 47) {
+			} else if (la.kind == 46) {
 				Get();
 				Expect(1);
 				expr = new Expr_Dot(this, expr, t.val); 
 			} else if (la.kind == 10) {
 				Get();
-				if (StartOf(2)) {
+				if (StartOf(8)) {
 					ArgExprList(ref args);
 				}
 				Expect(11);
 				expr = new Expr_Call(this, expr, args); args = null; 
-			} else if (la.kind == 40) {
+			} else if (la.kind == 39) {
 				Get();
 				expr = new Expr_Postrement(this, expr, false); 
 			} else {
@@ -646,23 +629,23 @@ const int // types
 	}
 
 	void Primary(ref IExpr expr) {
-		string className = null; IExpr exprBlock = null; 
+		string className = null; IExpr exprBlock = null; ITypeRef valType = null; IExpr initializer = null; 
 		if (IsScopeOpStart()) {
 			Ident(ref className);
-			Expect(48);
+			Expect(47);
 			Expect(1);
 			expr = new Expr_Scope(this, className, t.val); 
-		} else if (la.kind == 48) {
+		} else if (la.kind == 47) {
 			Get();
 			Expect(1);
 			expr = new Expr_Scope(this, null, t.val); 
 		} else if (la.kind == 1) {
 			Get();
 			expr = new Expr_Symbol(this, t.val); 
-		} else if (la.kind == 49) {
+		} else if (la.kind == 48) {
 			Get();
 			expr = new Expr_This(this); 
-		} else if (la.kind == 50) {
+		} else if (la.kind == 49) {
 			Get();
 			StatementBlock(ref exprBlock);
 			expr = new Expr_Catch(this, exprBlock); 
@@ -672,7 +655,16 @@ const int // types
 			Get();
 			Expr(ref expr);
 			Expect(11);
-		} else SynErr(79);
+		} else if (la.kind == 50) {
+			Get();
+			if (la.kind == 1) {
+				TypeSpecifierNoFunc(ref valType);
+			}
+			if (la.kind == 63) {
+				StatementBlock(ref initializer);
+			}
+			expr = new Expr_New(this, valType, initializer); 
+		} else SynErr(78);
 	}
 
 	void ArgExprList(ref ExprList args) {
@@ -711,9 +703,9 @@ const int // types
 			StatementBlock(ref expr);
 			break;
 		}
-		case 1: case 2: case 3: case 10: case 16: case 34: case 35: case 40: case 41: case 42: case 43: case 44: case 48: case 49: case 50: case 51: case 52: case 53: {
+		case 1: case 2: case 3: case 10: case 33: case 34: case 39: case 40: case 41: case 42: case 43: case 47: case 48: case 49: case 50: case 51: case 52: case 53: {
 			Expr(ref expr);
-			Expect(18);
+			Expect(17);
 			break;
 		}
 		case 58: {
@@ -740,30 +732,30 @@ const int // types
 		}
 		case 60: {
 			Get();
-			Expect(18);
+			Expect(17);
 			expr = new Expr_Break(this); 
 			break;
 		}
 		case 61: {
 			Get();
-			Expect(18);
+			Expect(17);
 			expr = new Expr_Continue(this); 
 			break;
 		}
 		case 62: {
 			Get();
-			if (StartOf(2)) {
+			if (StartOf(8)) {
 				Expr(ref cond);
 			}
-			Expect(18);
+			Expect(17);
 			expr = new Expr_Return(this, cond); 
 			break;
 		}
-		case 18: {
+		case 17: {
 			Get();
 			break;
 		}
-		default: SynErr(80); break;
+		default: SynErr(79); break;
 		}
 	}
 
@@ -829,22 +821,22 @@ const int // types
 		}
 		case 60: {
 			Get();
-			Expect(18);
+			Expect(17);
 			expr = new Expr_Break(this); 
 			break;
 		}
 		case 61: {
 			Get();
-			Expect(18);
+			Expect(17);
 			expr = new Expr_Continue(this); 
 			break;
 		}
 		case 62: {
 			Get();
-			if (StartOf(2)) {
+			if (StartOf(8)) {
 				Expr(ref cond);
 			}
-			Expect(18);
+			Expect(17);
 			expr = new Expr_Return(this, cond); 
 			break;
 		}
@@ -854,23 +846,23 @@ const int // types
 		}
 		case 57: {
 			TypeAliasStat(ref expr);
-			Expect(18);
+			Expect(17);
 			break;
 		}
-		case 1: case 2: case 3: case 8: case 9: case 10: case 12: case 13: case 14: case 15: case 16: case 34: case 35: case 40: case 41: case 42: case 43: case 44: case 48: case 49: case 50: case 51: case 52: case 53: {
+		case 1: case 2: case 3: case 8: case 9: case 10: case 12: case 13: case 14: case 15: case 33: case 34: case 39: case 40: case 41: case 42: case 43: case 47: case 48: case 49: case 50: case 51: case 52: case 53: {
 			if (IsDecl()) {
 				Decl(ref expr);
 			} else {
 				Expr(ref expr);
-				Expect(18);
+				Expect(17);
 			}
 			break;
 		}
-		case 18: {
+		case 17: {
 			Get();
 			break;
 		}
-		default: SynErr(81); break;
+		default: SynErr(80); break;
 		}
 	}
 
@@ -888,7 +880,7 @@ const int // types
 		Expect(67);
 		Expect(1);
 		scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; 
-		if (la.kind == 26) {
+		if (la.kind == 25) {
 			Get();
 			Expect(1);
 			scope.parent = t.val; 
@@ -908,7 +900,7 @@ const int // types
 			}
 			Expect(64);
 		}
-		Expect(18);
+		Expect(17);
 		scope.RegisterMembers(context); 
 	}
 
@@ -956,9 +948,9 @@ const int // types
 		Expect(11);
 		if (la.kind == 63) {
 			StatementBlock(ref block);
-		} else if (la.kind == 18) {
+		} else if (la.kind == 17) {
 			Get();
-		} else SynErr(82);
+		} else SynErr(81);
 		#if PEBBLE_ASSERTOFF
 			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
 		#else
@@ -1007,13 +999,13 @@ const int // types
 		// *** initialization *************************************************
 		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_x, _T,_T,_T,_T, _T,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _T,_T,_T,_T, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_x, _T,_T,_T,_T, _T,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _x,_T,_T,_x, _T,_T,_T,_T, _x,_T,_T,_T, _x,_T,_T,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _T,_T,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_T,_T,_x, _T,_T,_T,_T, _x,_T,_T,_T, _x,_T,_T,_x, _x},
+		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x},
 		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x}
@@ -1049,41 +1041,41 @@ public class Errors {
 			case 13: s = "\"global\" expected"; break;
 			case 14: s = "\"static\" expected"; break;
 			case 15: s = "\"override\" expected"; break;
-			case 16: s = "\"new\" expected"; break;
-			case 17: s = "\"<-\" expected"; break;
-			case 18: s = "\";\" expected"; break;
-			case 19: s = "\"+=\" expected"; break;
-			case 20: s = "\"-=\" expected"; break;
-			case 21: s = "\"*=\" expected"; break;
-			case 22: s = "\"/=\" expected"; break;
-			case 23: s = "\"..=\" expected"; break;
-			case 24: s = "\"<<\" expected"; break;
-			case 25: s = "\"?\" expected"; break;
-			case 26: s = "\":\" expected"; break;
-			case 27: s = "\"||\" expected"; break;
-			case 28: s = "\"&&\" expected"; break;
-			case 29: s = "\"==\" expected"; break;
-			case 30: s = "\"!=\" expected"; break;
-			case 31: s = "\"<=\" expected"; break;
-			case 32: s = "\">=\" expected"; break;
-			case 33: s = "\"~=\" expected"; break;
-			case 34: s = "\"+\" expected"; break;
-			case 35: s = "\"-\" expected"; break;
-			case 36: s = "\"..\" expected"; break;
-			case 37: s = "\"*\" expected"; break;
-			case 38: s = "\"/\" expected"; break;
-			case 39: s = "\"%\" expected"; break;
-			case 40: s = "\"++\" expected"; break;
-			case 41: s = "\"--\" expected"; break;
-			case 42: s = "\"#\" expected"; break;
-			case 43: s = "\"$\" expected"; break;
-			case 44: s = "\"!\" expected"; break;
-			case 45: s = "\"[\" expected"; break;
-			case 46: s = "\"]\" expected"; break;
-			case 47: s = "\".\" expected"; break;
-			case 48: s = "\"::\" expected"; break;
-			case 49: s = "\"this\" expected"; break;
-			case 50: s = "\"catch\" expected"; break;
+			case 16: s = "\"<-\" expected"; break;
+			case 17: s = "\";\" expected"; break;
+			case 18: s = "\"+=\" expected"; break;
+			case 19: s = "\"-=\" expected"; break;
+			case 20: s = "\"*=\" expected"; break;
+			case 21: s = "\"/=\" expected"; break;
+			case 22: s = "\"..=\" expected"; break;
+			case 23: s = "\"<<\" expected"; break;
+			case 24: s = "\"?\" expected"; break;
+			case 25: s = "\":\" expected"; break;
+			case 26: s = "\"||\" expected"; break;
+			case 27: s = "\"&&\" expected"; break;
+			case 28: s = "\"==\" expected"; break;
+			case 29: s = "\"!=\" expected"; break;
+			case 30: s = "\"<=\" expected"; break;
+			case 31: s = "\">=\" expected"; break;
+			case 32: s = "\"~=\" expected"; break;
+			case 33: s = "\"+\" expected"; break;
+			case 34: s = "\"-\" expected"; break;
+			case 35: s = "\"..\" expected"; break;
+			case 36: s = "\"*\" expected"; break;
+			case 37: s = "\"/\" expected"; break;
+			case 38: s = "\"%\" expected"; break;
+			case 39: s = "\"++\" expected"; break;
+			case 40: s = "\"--\" expected"; break;
+			case 41: s = "\"#\" expected"; break;
+			case 42: s = "\"$\" expected"; break;
+			case 43: s = "\"!\" expected"; break;
+			case 44: s = "\"[\" expected"; break;
+			case 45: s = "\"]\" expected"; break;
+			case 46: s = "\".\" expected"; break;
+			case 47: s = "\"::\" expected"; break;
+			case 48: s = "\"this\" expected"; break;
+			case 49: s = "\"catch\" expected"; break;
+			case 50: s = "\"new\" expected"; break;
 			case 51: s = "\"true\" expected"; break;
 			case 52: s = "\"false\" expected"; break;
 			case 53: s = "\"null\" expected"; break;
@@ -1110,12 +1102,11 @@ public class Errors {
 			case 74: s = "invalid Literal"; break;
 			case 75: s = "invalid Decl"; break;
 			case 76: s = "invalid Decl"; break;
-			case 77: s = "invalid Decl"; break;
-			case 78: s = "invalid UnaryPost"; break;
-			case 79: s = "invalid Primary"; break;
-			case 80: s = "invalid EmbeddedStat"; break;
-			case 81: s = "invalid Stat"; break;
-			case 82: s = "invalid Assert"; break;
+			case 77: s = "invalid UnaryPost"; break;
+			case 78: s = "invalid Primary"; break;
+			case 79: s = "invalid EmbeddedStat"; break;
+			case 80: s = "invalid Stat"; break;
+			case 81: s = "invalid Assert"; break;
 
 			// *** errors end *************************************************
 			default: s = "error " + n; break;
