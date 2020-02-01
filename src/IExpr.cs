@@ -2506,9 +2506,10 @@ namespace Pebble {
 		public override object Evaluate(ExecContext context) {
 			Pb.Assert(0 == context.control.flags);
 
-			bool conditionResult = (bool)_condition.Evaluate(context);
+			object conditionResultObject = _condition.Evaluate(context);
 			if (context.IsRuntimeErrorSet())
 				return null;
+			bool conditionResult = (bool)conditionResultObject;
 
 			return conditionResult ? _trueCase.Evaluate(context) : _falseCase.Evaluate(context);
 		}
@@ -3635,10 +3636,11 @@ namespace Pebble {
 			string msg = "";
 			if (!_result) {
 				if (null != _message) {
-					msg = (string) _message.Evaluate(context);
+					object msgObject = _message.Evaluate(context);
 					// Assert isn't responsible for handling exceptions when evaluating the message argument! 
 					if (context.IsRuntimeErrorSet())
 						return null;
+					msg = (string)msgObject;
 				}
 			}
 

@@ -287,7 +287,7 @@ const int // types
 	}
 
 	void Decl(ref IExpr expr) {
-		string sym = null; ITypeRef type = null; ITypeRef valType = null; IExpr init = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); 
+		string sym = null; ITypeRef type = null; IExpr init = null; TypeRefList argTypes = new TypeRefList(); StrList argNames = new StrList(); LiteralList defaultValues = new LiteralList(); IExpr body = null; IExpr script = null; DeclMods mods = new DeclMods(); 
 		while (StartOf(1)) {
 			if (la.kind == 12) {
 				Get();

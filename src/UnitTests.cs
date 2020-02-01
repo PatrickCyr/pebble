@@ -741,7 +741,8 @@ namespace Pebble {
 				{"assert(false, \"User assert message.\");", RuntimeErrorType.Assert},
 				// -- assert doesn't catch exceptions while evaluating parameters
 				{"assert(0 == (1 / 0));", RuntimeErrorType.NumberInvalid},
-				{ "assert(false, ToString(1 / 0));", RuntimeErrorType.NumberInvalid},
+				{"assert(false, ToString(1 / 0));", RuntimeErrorType.NumberInvalid},
+				{"{ A nulla; assert(false, nulla.name); }", RuntimeErrorType.NullAccessViolation},
 
 				// Length operator
 				{"{ List<num> nullln; #nullln; }", RuntimeErrorType.NullAccessViolation},
@@ -751,6 +752,9 @@ namespace Pebble {
 				{"num baddes <- \"3/0;\";", RuntimeErrorType.NumberInvalid},
 				{"num baddes <- \"true;\";", RuntimeErrorType.DeserializeTypeMismatch},
 				{"Result<bool> rb <- \"3;\";", RuntimeErrorType.DeserializeTypeMismatch},
+
+				// ?: operator
+				{"{ List<num> nulllist; #nulllist == 0 ? 0 : 1; }", RuntimeErrorType.NullAccessViolation},
 
 				// Class
 				// -- Error evaluating non-static initializer.
