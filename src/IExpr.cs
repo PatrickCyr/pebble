@@ -21,12 +21,15 @@ namespace Pebble {
 		// pass over the tree.
 		public List<IExpr> nodes;
 		protected ITypeDef _type = null;
+
+		protected string _scriptName = "";
 		protected int _line = -1;
 		protected int _col = -1;
 
 		// If creating the IExpr during parsing (which is the case 99% of the time), pass it in so we can extract line/col info from it.
 		public IExpr(Parser parser) {
 			if (null != parser) {
+				_scriptName = parser.scriptName;
 				_line = parser.t.line;
 				_col = parser.t.col;
 			}
@@ -48,10 +51,16 @@ namespace Pebble {
 		}
 
 		public string GetFileLineString() {
-			return "[" + _line + ":" + _col + "] ";
+			string s = null != _scriptName && _scriptName.Length > 0 ? _scriptName + " " : "";
+			return s + "[" + _line + ":" + _col + "] ";
 		}
+
 		protected void LogCompileErr(ExecContext context, ParseErrorType error, string msg) {
-			context.engine.LogCompileError(error, GetFileLineString() + msg);
+			context.engine.LogCompileError(error, GetFileLineString() + error.ToString() + ": " + msg);
+		}
+
+		protected void SetRuntimeError(ExecContext context, RuntimeErrorType error, string msg) {
+			context.SetRuntimeError(error, GetFileLineString() + error.ToString() + ": " + msg);
 		}
 	}
 
@@ -439,14 +448,14 @@ namespace Pebble {
 				return null;
 
 			if (null == result) {
-				context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "Dot: lhs is null.");
+				SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "Dot: lhs is null.");
 				return null;
 			}
 
 			resolvedClassValue = result as ClassValue;
 
 			if (null == resolvedClassValue) {
-				context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "Dot: object reference is null.");
+				SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "Dot: object reference is null.");
 				return null;
 			}
 
@@ -602,7 +611,7 @@ namespace Pebble {
 			if (context.IsRuntimeErrorSet())
 				return null;
 			if (null == container) {
-				context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "Attempt to index null container.");
+				SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "Attempt to index null container.");
 				return null;
 			}
 
@@ -616,10 +625,10 @@ namespace Pebble {
 				double ix = (double)ixObj;
 				int iix = Convert.ToInt32(ix);
 				if (iix < 0) {
-					context.SetRuntimeError(RuntimeErrorType.ArrayIndexOutOfBounds, GetFileLineString() + "Index (" + iix + ") out of bounds.");
+					SetRuntimeError(context, RuntimeErrorType.ArrayIndexOutOfBounds, "Index (" + iix + ") out of bounds.");
 					return null;
 				} else if (iix >= list.Count) {
-					context.SetRuntimeError(RuntimeErrorType.ArrayIndexOutOfBounds, GetFileLineString() + "Index (" + iix + ") out of bounds.");
+					SetRuntimeError(context, RuntimeErrorType.ArrayIndexOutOfBounds, "Index (" + iix + ") out of bounds.");
 					return null;
 				}
 
@@ -630,7 +639,7 @@ namespace Pebble {
 			Dictionary<object, Variable> dictionary = (container as PebbleDictionary).dictionary;
 
 			if (!dictionary.ContainsKey(ixObj)) {
-				context.SetRuntimeError(RuntimeErrorType.DictionaryDoesntContainKey, GetFileLineString() + "Dictionary doesn't contain key (" + ixObj.ToString() + ").");
+				SetRuntimeError(context, RuntimeErrorType.DictionaryDoesntContainKey, "Dictionary doesn't contain key (" + ixObj.ToString() + ").");
 				return null;
 			}
 
@@ -803,7 +812,7 @@ namespace Pebble {
 				if (context.IsRuntimeErrorSet())
 					return null;
 				if (null == result) {
-					context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "Attempt to call a null function variable.");
+					SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "Attempt to call a null function variable.");
 					return null;
 				}
 				Pb.Assert(0 == context.control.flags);
@@ -885,7 +894,7 @@ namespace Pebble {
 			if (result is double) {
 				double d = (double)result;
 				if (Double.IsInfinity(d) || Double.IsNaN(d)) {
-					context.SetRuntimeError(RuntimeErrorType.NumberInvalid, GetFileLineString() + "Function returned an invalid number.");
+					SetRuntimeError(context, RuntimeErrorType.NumberInvalid, "Function returned an invalid number.");
 					return null;
 				}
 			}
@@ -941,7 +950,7 @@ namespace Pebble {
 
 			if (createScope) {
 				if (!context.stack.PushBlock("__exprlist", context)) {
-					context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "exprlist: stack overflow pushing block");
+					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "exprlist: stack overflow pushing block");
 					return null;
 				}
 			}
@@ -1419,32 +1428,32 @@ namespace Pebble {
 			dStep = Math.Round(dStep);
 
 			if (dStart > MAX) {
-				context.SetRuntimeError(RuntimeErrorType.ForIndexOutOfBounds, GetFileLineString() + "For start value above maximum value " + MAX + ".");
+				SetRuntimeError(context, RuntimeErrorType.ForIndexOutOfBounds, "For start value above maximum value " + MAX + ".");
 				return null;
 			}
 			if (dStart < -MAX) {
-				context.SetRuntimeError(RuntimeErrorType.ForIndexOutOfBounds, GetFileLineString() + "For start value below minimum value -" + MAX + ".");
+				SetRuntimeError(context, RuntimeErrorType.ForIndexOutOfBounds, "For start value below minimum value -" + MAX + ".");
 				return null;
 			}
 			if (dEnd > MAX) {
-				context.SetRuntimeError(RuntimeErrorType.ForIndexOutOfBounds, GetFileLineString() + "For end value above maximum value " + MAX + ".");
+				SetRuntimeError(context, RuntimeErrorType.ForIndexOutOfBounds, "For end value above maximum value " + MAX + ".");
 				return null;
 			}
 			if (dEnd < -MAX) {
-				context.SetRuntimeError(RuntimeErrorType.ForIndexOutOfBounds, GetFileLineString() + "For end value below minimum value -" + MAX + ".");
+				SetRuntimeError(context, RuntimeErrorType.ForIndexOutOfBounds, "For end value below minimum value -" + MAX + ".");
 				return null;
 			}
 			if (dStep > MAX) {
-				context.SetRuntimeError(RuntimeErrorType.ForIndexOutOfBounds, GetFileLineString() + "For step value above maximum value " + MAX + ".");
+				SetRuntimeError(context, RuntimeErrorType.ForIndexOutOfBounds, "For step value above maximum value " + MAX + ".");
 				return null;
 			}
 			if (dStep < -MAX) {
-				context.SetRuntimeError(RuntimeErrorType.ForIndexOutOfBounds, GetFileLineString() + "For step value below minimum value -" + MAX + ".");
+				SetRuntimeError(context, RuntimeErrorType.ForIndexOutOfBounds, "For step value below minimum value -" + MAX + ".");
 				return null;
 			}
 
 			if (!context.stack.PushBlock(Pb.FOR_BLOCK_NAME, context)) {
-				context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "For: stack overflow pushing block.");
+				SetRuntimeError(context, RuntimeErrorType.StackOverflow, "For: stack overflow pushing block.");
 				return null;
 			}
 			Variable it = context.CreateEval(iterator, IntrinsicTypeDefs.NUMBER, 0, false);
@@ -1637,7 +1646,7 @@ namespace Pebble {
 			if (_collectionType == CollectionType.LIST) {
 				object listObject = collection.Evaluate(context);
 				if (null == listObject) {
-					context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "foreach list is null.");
+					SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "foreach list is null.");
 					return null;
 				}
 				PebbleList list = listObject as PebbleList;
@@ -1646,7 +1655,7 @@ namespace Pebble {
 				// Note that collection must be evaluated *before* the foreach block is pushed
 				// or the ref looks at the wrong scope.
 				if (!context.stack.PushBlock(Pb.FOREACH_BLOCK_NAME, context)) {
-					context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "foreach: stack overflow pushing block.");
+					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "foreach: stack overflow pushing block.");
 					return null;
 				}
 
@@ -1687,7 +1696,7 @@ namespace Pebble {
 			} else if (_collectionType == CollectionType.DICTIONARY) {
 				object dictObject = collection.Evaluate(context);
 				if (null == dictObject) {
-					context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "foreach dictionary is null.");
+					SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "foreach dictionary is null.");
 					return null;
 				}
 				PebbleDictionary dict = dictObject as PebbleDictionary;
@@ -1696,7 +1705,7 @@ namespace Pebble {
 				// Note that collection must be evaluated *before* the foreach block is pushed
 				// or the ref looks at the wrong scope.
 				if (!context.stack.PushBlock(Pb.FOREACH_BLOCK_NAME, context)) {
-					context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "foreach: stack overflow pushing block");
+					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "foreach: stack overflow pushing block");
 					return null;
 				}
 
@@ -1735,7 +1744,7 @@ namespace Pebble {
 				// Note that collection must be evaluated *before* the foreach block is pushed
 				// or the ref looks at the wrong scope.
 				if (!context.stack.PushBlock(Pb.FOREACH_BLOCK_NAME, context)) {
-					context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "foreach: stack overflow pushing block");
+					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "foreach: stack overflow pushing block");
 					return null;
 				}
 
@@ -2359,7 +2368,7 @@ namespace Pebble {
 
 			if (null != _initializer) {
 				if (!context.stack.PushDefstructorScope(_newInstance, context)) {
-					context.SetRuntimeError(RuntimeErrorType.StackOverflow, GetFileLineString() + "Expr_New.Evaluate - stack overflow (initializer).");
+					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "Expr_New.Evaluate - stack overflow (initializer).");
 					return null;
 				}
 
@@ -2656,7 +2665,7 @@ namespace Pebble {
 			if (errors.Count > 0 || scriptExpr == null) {
 				string msg = errors.Count == 0 ? "Error in deserialization script." : errors[0].msg;
 				if (null == resultInstance) {
-					context.SetRuntimeError(RuntimeErrorType.DeserializeScriptHasError, GetFileLineString() + msg);
+					SetRuntimeError(context, RuntimeErrorType.DeserializeScriptHasError, msg);
 					return null;
 				} else {
 					resultInstance.GetByName("error").value = CoreLib.scriptErrorEnum.GetValue(errors[0].type.ToString());
@@ -2668,7 +2677,7 @@ namespace Pebble {
 			// Check that expression's type matches l-values.
 			if (null != resultInstance) {
 				if (!lClassType.genericTypes[0].CanStoreValue(context, scriptExpr.GetTypeDef())) {
-					context.SetRuntimeError(RuntimeErrorType.DeserializeTypeMismatch, GetFileLineString() + "Script's type cannot be stored in Result template type.");
+					SetRuntimeError(context, RuntimeErrorType.DeserializeTypeMismatch, "Script's type cannot be stored in Result template type.");
 					return null;
 				}
 
@@ -2677,7 +2686,7 @@ namespace Pebble {
 				variable.value = resultInstance;
 			} else {
 				if (!variable.type.CanStoreValue(context, scriptExpr.GetTypeDef())) {
-					context.SetRuntimeError(RuntimeErrorType.DeserializeTypeMismatch, GetFileLineString() + "Script's type cannot be stored in l-value.");
+					SetRuntimeError(context, RuntimeErrorType.DeserializeTypeMismatch, "Script's type cannot be stored in l-value.");
 					return null;
 				}
 			}
@@ -2693,7 +2702,7 @@ namespace Pebble {
 				if (result is RuntimeErrorInst) {
 					// ...reapply the error so that execution is aborted.
 					RuntimeErrorInst rei = result as RuntimeErrorInst;
-					context.SetRuntimeError(rei.type, rei.msg);
+					SetRuntimeError(context, rei.type, rei.msg);
 					return null;
 				} else {
 					variable.value = result;
@@ -2775,14 +2784,14 @@ namespace Pebble {
 				return null;
 			Pb.Assert(null != stream);
 			if (null == stream.value) {
-				context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, "Left hand side of stream operator is null.");
+				SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "Left hand side of stream operator is null.");
 				return null;
 			}
 
 			StreamLib.PebbleStreamHelper helper = stream.value as StreamLib.PebbleStreamHelper;
 			if (helper.IsReading()) {
 				if (!(_rhs is IExpr_LValue)) {
-					context.SetRuntimeError(RuntimeErrorType.SerializeReadRequiresLValue, "When reading, right hand side of stream operator must be an l-value.");
+					SetRuntimeError(context, RuntimeErrorType.SerializeReadRequiresLValue, "When reading, right hand side of stream operator must be an l-value.");
 					return null;
 				}
 
@@ -2803,7 +2812,7 @@ namespace Pebble {
 					return null;
 				Pb.Assert(result, "When would result be false but no runtime error?!");
 			} else {
-				context.SetRuntimeError(RuntimeErrorType.SerializeStreamNotOpen, "Cannot serialize to stream that is not open.");
+				SetRuntimeError(context, RuntimeErrorType.SerializeStreamNotOpen, "Cannot serialize to stream that is not open.");
 				return null;
 			}
 
@@ -3039,7 +3048,7 @@ namespace Pebble {
 				return null;
 
 			if (null == value) {
-				context.SetRuntimeError(RuntimeErrorType.NullAccessViolation, GetFileLineString() + "Length operator on null value.");
+				SetRuntimeError(context, RuntimeErrorType.NullAccessViolation, "Length operator on null value.");
 				return null;
 			}
 
@@ -3231,7 +3240,7 @@ namespace Pebble {
 			if (result is double) {
 				double d = (double)result;
 				if (Double.IsInfinity(d) || Double.IsNaN(d)) {
-					context.SetRuntimeError(RuntimeErrorType.NumberInvalid, GetFileLineString() + "Operator returned an invalid number.");
+					SetRuntimeError(context, RuntimeErrorType.NumberInvalid, "Operator returned an invalid number.");
 					return null;
 				}
 			}
@@ -3652,7 +3661,7 @@ namespace Pebble {
 			}
 
 			if (!_result)
-				context.SetRuntimeError(RuntimeErrorType.Assert, "ASSERT FAILED " + GetFileLineString() + ": " + reason + " " + msg);
+				SetRuntimeError(context, RuntimeErrorType.Assert, "ASSERT FAILED : " + reason + " " + msg);
 
 			return _result;
 		}

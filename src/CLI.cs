@@ -107,7 +107,7 @@ namespace Pebble {
 				string fileContents = File.ReadAllText(filename);
 				errors.Clear();
 
-				object ret = engine.RunScript(fileContents, ref errors, optVerbose);
+				object ret = engine.RunScript(fileContents, ref errors, optVerbose, filename);
 				if (ret is RuntimeErrorInst) {
 					Console.WriteLine("Runtime Error: " + ((RuntimeErrorInst)ret).ToString());
 				} else if (errors.Count == 0) {

@@ -38,6 +38,7 @@ public class Parser {
 	
 	public Scanner scanner;
 	public Errors  errors;
+	public string scriptName;
 
 	public Token t;    // last recognized token
 	public Token la;   // lookahead token

@@ -19,6 +19,7 @@ namespace Pebble {
 		public LogFunction Log = DefaultLogFunction;
 		public LogFunction LogError = DefaultLogFunction;
 		public bool logCompileErrors = true;
+		public string currentFileOrScriptName;
 
 		protected List<ParseErrorInst> _parseErrors = new List<ParseErrorInst>();
 
@@ -99,23 +100,24 @@ namespace Pebble {
 		 * gone. This should be the default behavior, with the notable exception of CLI 
 		 * interactive mode.
 		*/
-		public object RunScript(string s, ref List<ParseErrorInst> errors, bool verbose = false) {
-			return _RunScript(s, ref errors, verbose, true);
+		public object RunScript(string s, ref List<ParseErrorInst> errors, bool verbose = false, string filename = null) {
+			string scriptName = filename != null ? filename : _GetScriptNameFromScript(s);
+			return _RunScript(scriptName, s, ref errors, verbose, true);
 		}
 
 		// This version runs a script without creating a temp scope, so any local variables
 		// made persist on the stack afterwards. Ideal for interactive mode.
 		public object RunInteractiveScript(string s, ref List<ParseErrorInst> errors, bool verbose = false) {
-			return _RunScript(s, ref errors, verbose, false);
+			return _RunScript(null, s, ref errors, verbose, false);
 		}
 
-		private object _RunScript(string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
-			IExpr expr = _Parse(s, ref errors, verbose, createTempScope);
+		private object _RunScript(string scriptName, string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
+			IExpr expr = _Parse(scriptName, s, ref errors, verbose, createTempScope);
 			if (null == expr)
 				return null;
 
 			return _EvaluateExpression(expr, createTempScope);
-		}
+		}		
 
 		/**
 		 * Parses a script, and returns the resultant IExpr or null if there was an error.
@@ -126,10 +128,12 @@ namespace Pebble {
 			if (null == s)
 				return null;
 
-			return _Parse(s, ref errors, verbose, true);
+			string scriptName = _GetScriptNameFromScript(s);
+
+			return _Parse(scriptName, s, ref errors, verbose, true);
 		}
 
-		private IExpr _Parse(string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
+		private IExpr _Parse(string scriptName, string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
 			errors.Clear();
 			// Save this for LogCompileErrors.
 			_parseErrors = errors;
@@ -138,6 +142,7 @@ namespace Pebble {
 			Scanner scanner = new Scanner(buffer);
 			Parser parser = new Parser(scanner);
 			parser.context = defaultContext;
+			parser.scriptName = scriptName;
 			parser.Parse();
 
 			if (parser.errors.count > 0) {
@@ -223,7 +228,7 @@ namespace Pebble {
 			if (defaultContext.IsRuntimeErrorSet()) {
 				defaultContext.stack.RestoreState(stackState);
 				if (logCompileErrors)
-					LogError("Runtime error evaluting expression : " + defaultContext.GetRuntimeErrorString());
+					LogError(defaultContext.GetRuntimeErrorString());
 				res = defaultContext.control.runtimeError;
 				defaultContext.control.Clear();
 			} else if (createTempScope) {
@@ -236,11 +241,20 @@ namespace Pebble {
 			return res;
 		}
 
+		// Creates a string "name" from the given script for use in error messages.
+		private string _GetScriptNameFromScript(string s) {
+			string scriptName;
+			if (s.Length < 18)
+				scriptName = "\"" + s + "\"";
+			else
+				scriptName = "\"" + s.Substring(0, 15) + "...\"";
+			return scriptName;
+		}
 
 		// ****************************************************************
 		// *** Test Functions
 		// ****************************************************************
-	
+
 		// Returns true if the script executes successfully and returns expectedValue.
 		// If expectedValue is null, then the return value is ignored and simply returns
 		// true if there are no other errors.
@@ -248,7 +262,7 @@ namespace Pebble {
 			if (verbose) Log("-> " + script);
 
 			List<ParseErrorInst> errors = new List<ParseErrorInst>();
-			IExpr expr = _Parse(script, ref errors, verbose, false);
+			IExpr expr = _Parse(_GetScriptNameFromScript(script), script, ref errors, verbose, false);
 			if (errors.Count > 0) {
 				if (!verbose) Log("-> " + script);
 				if (verbose) 
@@ -339,7 +353,7 @@ namespace Pebble {
 			if (verbose) Log("-> " + script);
 
 			List<ParseErrorInst> errors = new List<ParseErrorInst>();
-			object res = _Parse(script, ref errors, false, false);
+			object res = _Parse(_GetScriptNameFromScript(script), script, ref errors, false, false);
 			if (null != res && errors.Count == 0) {
 				if (!verbose) LogError("-> " + script);
 				LogError("ERROR: Expected 'error' script to fail to compile.");
@@ -359,7 +373,7 @@ namespace Pebble {
 			if (verbose) Log("-> " + script);
 
 			List<ParseErrorInst> errors = new List<ParseErrorInst>();
-			IExpr expr = _Parse(script, ref errors, verbose, false);
+			IExpr expr = _Parse(_GetScriptNameFromScript(script), script, ref errors, verbose, false);
 			if (null == expr) {
 				if (!verbose) LogError("-> " + script);
 				LogError("Expected 'execution fail' script to compile: '" + script + "'");

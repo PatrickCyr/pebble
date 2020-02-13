@@ -182,7 +182,7 @@ namespace Pebble {
 		}
 
 		public override string ToString() {
-			return type.ToString() + " - " + msg;
+			return null != msg ? msg : type.ToString();
 		}
 	}
 
@@ -224,7 +224,7 @@ namespace Pebble {
 		}
 
 		public override string ToString() {
-			return type + " - " + msg;
+			return null != msg ? msg : type.ToString();
 		}
 	}
 }
