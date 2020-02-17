@@ -346,7 +346,10 @@ namespace Pebble {
 
 					IEnumerable<string> result;
 					try {
-						result = File.ReadLines(path);
+						// Note: ReadLines is a little more efficient on memory than ReadAllLines, but the .NET used by Unity 2017 doesn't support it.
+						// Shouldn't really matter. If you're processing huge files, probably Pebble isn't the way to go.
+						//result = File.ReadLines(path);
+						result = File.ReadAllLines(path);
 					} catch (Exception e) {
 						lastErrorVar.value = "ReadLines: " + e.ToString();
 						return null;
