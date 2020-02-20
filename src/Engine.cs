@@ -148,7 +148,7 @@ namespace Pebble {
 			if (parser.errors.count > 0) {
 				if (logCompileErrors) {
 					for (int ii = 0; ii < parser.errors.errors.Count; ++ii) {
-						LogError(parser.errors.errors[ii].type + ": " + parser.errors.errors[ii].msg);
+						LogError(parser.errors.errors[ii].ToString());
 					}
 				}
 

@@ -137,14 +137,16 @@ const int // types
 	}
 
 	void SynErr (int n) {
-		if (errDist >= minErrDist) errors.SynErr(la.line, la.col, n);
+		if (errDist >= minErrDist) errors.SynErr(scriptName, la.line, la.col, n);
 		errDist = 0;
 	}
 
+	/*
 	public void SemErr (string msg) {
-		if (errDist >= minErrDist) errors.SemErr(t.line, t.col, msg);
+		if (errDist >= minErrDist) errors.SemErr(scriptName, t.line, t.col, msg);
 		errDist = 0;
 	}
+	*/
 	
 	void Get () {
 		for (;;) {
@@ -1020,9 +1022,8 @@ public class Errors {
 	public int count = 0;                                    // number of errors detected
 	public System.IO.TextWriter errorStream = Console.Out;   // error messages go to this stream
 	public List<ParseErrorInst> errors = new List<ParseErrorInst>();
-	public string errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
 
-	public virtual void SynErr (int line, int col, int n) {
+	public virtual void SynErr (string scriptName, int line, int col, int n) {
 		string s;
 		switch (n) {
 			// *** errors *****************************************************
@@ -1114,21 +1115,22 @@ public class Errors {
 		}
 		//errorStream.WriteLine(errMsgFormat, line, col, s);
 		// PRC: I made this!
-		errors.Add(new ParseErrorInst(ParseErrorType.SyntaxError, String.Format(errMsgFormat, line, col, s)));
+		errors.Add(new ParseErrorInst(ParseErrorType.SyntaxError, scriptName + " [" + line + ":" + col + "] " + ParseErrorType.SyntaxError.ToString() + ": " + s));
 		count++;
 	}
 
-	public virtual void SemErr (int line, int col, string s) {
+	/* PRC: I'm not using these.
+	public virtual void SemErr (string scriptName, int line, int col, string s) {
 		//errorStream.WriteLine(errMsgFormat, line, col, s);
 		// PRC: I made this!
-		errors.Add(new ParseErrorInst(ParseErrorType.SemanticError, String.Format(errMsgFormat, line, col, s)));
+		errors.Add(new ParseErrorInst(ParseErrorType.SemanticError, String.Format(errMsgFormat, scriptName, line, col, ParseErrorType.SemanticError.ToString(), s)));
 		count++;
 	}
 	
-	public virtual void SemErr (string s) {
+	public virtual void SemErr (string scriptName, string s) {
 		//errorStream.WriteLine(s);
 		// PRC: I made this!
-		errors.Add(new ParseErrorInst(ParseErrorType.SemanticError, s));
+		errors.Add(new ParseErrorInst(ParseErrorType.SemanticError, scriptName + " " + ParseErrorType.SemanticError.ToString() + ": " + s));
 		count++;
 	}
 	
@@ -1139,6 +1141,7 @@ public class Errors {
 	public virtual void Warning(string s) {
 		errorStream.WriteLine(s);
 	}
+	*/
 } // Errors
 
 

@@ -92,8 +92,7 @@ namespace Pebble {
 		// Used by unit tests to say that any error is acceptable.
 		Any,
 
-		// All parse errors are represented by these two errors.
-		SemanticError,
+		// All parse errors are represented by this error.
 		SyntaxError,
 
 		ArgCountMismatch,
