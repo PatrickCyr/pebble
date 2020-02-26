@@ -265,6 +265,15 @@ namespace Pebble {
 			return AddMember(name, typeDef, new Expr_Value(null, value, typeDef), isStatic);
 		}
 
+		/* Todo, perhaps: Add function which allows C# to add static functions later. Could help C#-Pebble communication.
+		public Variable AddStaticLiteralAfterFinalization(ExecContext context, string name, ITypeDef typeDef, object value) {
+			Variable variable = new Variable(name, typeDef);
+			staticVars.Add(variable);
+			variable.value = value;
+			return variable;
+		}
+		*/
+
 		// Use to add an override of a member function.
 		// Caller is responsible for checking that...
 		//	1) we have a parent

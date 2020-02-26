@@ -62,6 +62,15 @@ namespace Pebble {
 			return defaultContext.stack.GetVariable(variableName, true);
 		}
 
+		/* Todo, maybe: this could be handy.
+		public Variable GetClassStaticVariable(string className, string variableName) {
+			ClassDef classDef = defaultContext.GetClass(className);
+			MemberRef mref = classDef.GetMemberRef(variableName, ClassDef.SEARCH.STATIC);
+			Variable var = classDef.GetVariable(mref);
+			return var;
+		}
+		*/
+
 		/* 
 			Creates a new global variable with given name, type, and initial value. 
 			BE VERY CAREFUL IF YOU DECIDE TO USE THIS. THIS FUNCTION DOES NO TYPE 
@@ -124,13 +133,13 @@ namespace Pebble {
 		 * null can also be returned if the script evaluates to no expression (for example
 		 * if it was an empty string), in which case errors will be empty.
 		 */
-		public IExpr Parse(string s, ref List<ParseErrorInst> errors, bool verbose = false) {
+		public IExpr Parse(string s, ref List<ParseErrorInst> errors, bool verbose = false, string scriptName = null) {
 			if (null == s)
 				return null;
 
-			string scriptName = _GetScriptNameFromScript(s);
+			string sn = scriptName != null ? scriptName : _GetScriptNameFromScript(s);
 
-			return _Parse(scriptName, s, ref errors, verbose, true);
+			return _Parse(sn, s, ref errors, verbose, true);
 		}
 
 		private IExpr _Parse(string scriptName, string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
