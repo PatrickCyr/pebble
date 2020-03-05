@@ -11,6 +11,7 @@ using System.IO;
 
 namespace Pebble {
 	class PebbleCLI {
+		[STAThread]
 		public static void Main(string[] arg) {
 
 			// *** Parse arguments.

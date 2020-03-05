@@ -5,7 +5,6 @@ See Copyright Notice in LICENSE.TXT
 
 using System;
 using System.Collections.Generic;
-
 using ArgList = System.Collections.Generic.List<Pebble.ITypeDef>;
 
 namespace Pebble {
@@ -407,6 +406,34 @@ namespace Pebble {
 				engine.AddBuiltInFunction(newValue, "ToString");
 			}
 
+			/////////////////////////////////////////////////////////////////
+			// Clipboard
+
+			//@ global string ClipboardGet()
+			//   Returns text in the clipboard, or empty string if none or not a string.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					//! Had to include the System.Windows.Forms assembly, at least on Windows.
+					return System.Windows.Forms.Clipboard.GetText();
+				};
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.STRING, new ArgList { }, eval, false);
+				engine.AddBuiltInFunction(newValue, "ClipboardGet");
+			}
+
+			//@ global string ClipboardSet(string newText)
+			//   Sets clipboard text. Returns previous text, if any.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					string text = (string)args[0];
+					
+					//! Had to include the System.Windows.Forms assembly, at least on Windows.
+					string previous = System.Windows.Forms.Clipboard.GetText();
+					System.Windows.Forms.Clipboard.SetText(text);
+					return previous;
+				};
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.STRING, new ArgList { IntrinsicTypeDefs.STRING }, eval, false);
+				engine.AddBuiltInFunction(newValue, "ClipboardSet");
+			}
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {
