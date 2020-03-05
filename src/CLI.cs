@@ -71,6 +71,8 @@ namespace Pebble {
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine(msg);
 				Console.ForegroundColor = sav;
+				//!
+				Console.WriteLine("restoring " + sav);
 			};
 
 			// Register optional libraries.
@@ -135,6 +137,9 @@ namespace Pebble {
 						line = "Debug::DumpClass(\"Debug\");";
 						Console.WriteLine(line);
 					}
+
+//!
+	Console.WriteLine("'" + line + "'");
 
 					object ret = engine.RunInteractiveScript(line, ref errors, optVerbose);
 					if (errors.Count == 0 && !(ret is RuntimeErrorInst)) {

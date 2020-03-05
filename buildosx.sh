@@ -1,2 +1,2 @@
-mkdir bin/pebble
-mcs -d:PEBBLECLI -out:bin/pebble src/*.cs src/coco/*.cs src/lib/*.cs
+mkdir bin
+mcs -d:PEBBLECLI -out:bin/pebblec src/*.cs src/coco/*.cs src/lib/*.cs
