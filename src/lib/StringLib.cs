@@ -12,6 +12,8 @@ namespace Pebble {
 
 	public class StringLib {
 
+		private readonly static string[] _defaultSeparators = new string[] { "\n" };
+
 		public static void Register(Engine engine) {
 
 			//@ class String
@@ -226,6 +228,40 @@ namespace Pebble {
 				classDef.AddMemberLiteral("Replace", newValue.valType, newValue, true);
 			}
 
+			//@ static List<string> Split(string str, List<string> separators = null)
+			//   Splits input string into a list of strings given the provided separators.
+			//   If no separators are provided, uses the newline character.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					string a = (string)args[0];
+
+					string[] splitted;
+					if (null == args[1]) {
+						splitted = a.Split(_defaultSeparators, StringSplitOptions.None);
+					} else {
+						PebbleList delimsList = args[1] as PebbleList;
+						if (0 == delimsList.list.Count) {
+							context.SetRuntimeError(RuntimeErrorType.ArgumentInvalid, "String::Split : Separators list cannot be empty.");
+							return null;
+						}
+
+						List<string> dlist = delimsList.GetNativeList();
+						splitted = a.Split(dlist.ToArray(), StringSplitOptions.None);
+					}
+
+					PebbleList list = PebbleList.AllocateListString(context, "String::Split result");
+					foreach (string s in splitted)
+						list.list.Add(new Variable(null, IntrinsicTypeDefs.STRING, s));
+					return list;
+				};
+
+				List<Expr_Literal> defaults = new List<Expr_Literal>();
+				defaults.Add(null);
+				defaults.Add(new Expr_Literal(null, null, IntrinsicTypeDefs.NULL));
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.LIST_STRING, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.LIST_STRING }, eval, false, null, true, defaults);
+				classDef.AddMemberLiteral("Split", newValue.valType, newValue, true);
+			}
+
 			//@ static bool StartsWith(string s, string start)
 			//   Returns true if s starts with start.
 			{
@@ -350,7 +386,7 @@ namespace Pebble {
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {
-			
+
 			bool result = true;
 
 			engine.Log("\n*** StringLib: Running tests...");
@@ -384,6 +420,8 @@ namespace Pebble {
 			result &= engine.RunTest("String::Replace(\"hello\", \"l\", \"\");", "heo", verbose);
 			result &= engine.RunTest("String::Replace(\"hello\", \"z\", \"pop\");", "hello", verbose);
 			result &= engine.RunTest("String::Replace(\"\", \"a\", \"hello\");", "", verbose);
+			result &= engine.RunTest("{ List<string> split = String::Split(\"Hello,\\nworld!\"); Print(split); 2 == #split && \"Hello,\" == split[0] && \"world!\" == split[1]; }", true, verbose);
+			result &= engine.RunTest("{ List<string> split = String::Split(\"Hello,\\nworld!\", new List<string> { Add(\"\\n\"); }); Print(split); 2 == #split && \"Hello,\" == split[0] && \"world!\" == split[1]; }", true, verbose);
 			result &= engine.RunTest("String::StartsWith(\"PoopyButt\", \"Poo\");", true, verbose);
 			result &= engine.RunTest("String::StartsWith(\"PoopyButt\", \"poo\");", false, verbose);
 			result &= engine.RunTest("String::Substring(\"pOo 42\", 3, 3);", " 42", verbose);
@@ -405,6 +443,7 @@ namespace Pebble {
 			//seems to work but the breakpoint on exception is annoying 
 			//result &= engine.RunRuntimeFailTest("String::Format(\"{1}\", 1);", RuntimeErrorType.NativeException, verbose);
 			result &= engine.RunRuntimeFailTest("String::Replace(\"hello\", \"\", \"pop\");", RuntimeErrorType.ArgumentInvalid, verbose);
+			result &= engine.RunRuntimeFailTest("String::Split(\"hello\", new List<string>);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", -1 , 0);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", 0 , -1);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", 10 , 1);", RuntimeErrorType.ArgumentInvalid, verbose);

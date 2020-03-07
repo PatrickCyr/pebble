@@ -71,8 +71,6 @@ namespace Pebble {
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine(msg);
 				Console.ForegroundColor = sav;
-				//!
-				Console.WriteLine("restoring " + sav);
 			};
 
 			// Register optional libraries.

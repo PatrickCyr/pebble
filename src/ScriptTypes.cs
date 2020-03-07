@@ -44,7 +44,7 @@ namespace Pebble {
 			for (int ii = 0; ii < argTypes.Count; ++ii) {
 				string defaultValueString = "";
 				if (null != defaultValues && null != defaultValues[ii])
-					defaultValueString = " = " + defaultValues[ii].value.ToString();
+					defaultValueString = " = " + (null != defaultValues[ii].value ? defaultValues[ii].value.ToString() : "null");
 				args += (ii == 0 ? "" : ", ") + argTypes[ii] + defaultValueString;
 			}
 
@@ -452,7 +452,7 @@ namespace Pebble {
 			for (int ii = 0; ii < argTypes.Count; ++ii) {
 				string defaultString = "";
 				if (null != defaultValues && null != defaultValues[ii])
-					defaultString = " = " + defaultValues[ii].value.ToString();
+					defaultString = " = " + (null != defaultValues[ii].value ? defaultValues[ii].value.ToString() : "null");
 
 				args += (ii == 0 ? "" : ", ") + argTypes[ii] + defaultString;
 			}

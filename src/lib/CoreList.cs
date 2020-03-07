@@ -12,6 +12,26 @@ namespace Pebble {
 	public class PebbleList : ClassValue {
 		public List<Variable> list = new List<Variable>();
 		public int enumeratingCount = 0;
+
+		private static ClassDef _listClassDef = null;
+
+		public static PebbleList AllocateListString(ExecContext context, string debugName = "(List<string> inst)") {
+			if (null == _listClassDef)
+				_listClassDef = context.GetClass("List<string>");
+			PebbleList listinst = (PebbleList) _listClassDef.childAllocator();
+			listinst.classDef = _listClassDef;
+			listinst.debugName = debugName;
+			return listinst;
+		}
+
+		// Todo - Could this be generic without PebbleList being generic?
+		public List<string> GetNativeList() {
+			List<string> result = new List<string>();
+			foreach (Variable v in list) {
+				result.Add((string)v.value);
+			}
+			return result;
+		}
 	}
 
 	public class CoreList {
