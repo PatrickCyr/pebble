@@ -241,8 +241,6 @@ namespace Pebble {
 				res = defaultContext.control.runtimeError;
 				defaultContext.control.Clear();
 			} else if (createTempScope) {
-				//defaultContext.stack.PopScope();
-				//!
 				defaultContext.stack.RestoreState(stackState);
 				defaultContext.control.Clear();
 			}

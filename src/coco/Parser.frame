@@ -29,6 +29,7 @@ Coco/R itself) does not fall under the GNU General Public License.
 -->begin
 using System;
 using System.Collections.Generic;
+using BoolList = System.Collections.Generic.List<bool>;
 using ExprList = System.Collections.Generic.List<Pebble.IExpr>;
 using StrList = System.Collections.Generic.List<string>;
 using TypeRefList = System.Collections.Generic.List<Pebble.ITypeRef>;

@@ -252,18 +252,20 @@ namespace Pebble {
 				{"{ num OF(num x, num y = 10) { x + y; } (11 == OF(1) && 21 == OF(1, 20)); }", true},
 				{"{ num OF2(num x = 1, num y = 10) { x + y; } (11 == OF2() && 20 == OF2(10) && 21 == OF2(1, 20)); }", true},
 				{"{ num OF3(num x = 1) { x * 2; } (2 == OF3() && 20 == OF3(10)); }", true},
-				// -- default value in variable applying to function
-				{"{	functype<num(num = 3)> fnn; num FNN(num x) { x * 2; } fnn = FNN; fnn(); }", 6},
 				// -- default value in function making it fit into variable with fewer arguments
 				{"{	functype<num()> fnn; num FNN(num x = 4) { x * 2; } fnn = FNN; fnn(); }", 8},
-				// -- default argument value of function value overrides default argument value of variable type
-				{"{	functype<num(num = 3)> fnn; num FNN(num x = 4) { x * 2; } fnn = FNN; fnn(); }", 8},
+				{"{	functype<num(num?)> fnn; num FNN(num x = 4) { x * 2; } fnn = FNN; fnn(); }", 8},
+				// * class default values can only be null because null is the only literal class value
+				{"{ bool OF4(List<num> ln = null) { ln == null; } OF4(); }", true},
 				// -- argument promotion: bFunc can only be called with Bs, which are always As
 				{"{ functype<string(B)> bFunc; string AFunc(A a) { a.name; } bFunc = AFunc; bFunc(new B); }", "B"},
 				// -- function arguments don't collide with globals
 				{"{ global num argGlobal = 2; num IDontCollide(num argGlobal) { argGlobal * ::argGlobal; } IDontCollide(3); }", 6},
 				// -- function variable default value is null
 				{"{ functype<void()> nullfunc; nullfunc == null; }", true},
+				// -- function variables with var args: this is ok fbb will always be guaranteed to be called with an argument
+				{"{ functype<bool(bool)> fbb; functype < bool(bool ?) > fbbo; fbb = fbbo; true; }", true},
+
 				
 
 				// Return
@@ -296,7 +298,7 @@ namespace Pebble {
 				{"{ num res = 0; for (zzz = 1, 10) { if (zzz > 8) ++res; }; res; }", 2},
 				// -- limits
 				{"{ num count = 0; for (i = FORMAX-1, FORMAX) { ++count; } count; }", 2},
-				//!{"{ num min = -2147483647; num count = 0; for (i = min, min) { ++count; } count; }", 1},
+				{"{ num min = -FORMAX; num count = 0; for (i = min, min) { ++count; } count; }", 1},
 				// --rounding
 				{"{ num count = 0; for (i = 0.4, 0.6, 1.4) { ++count; } count; }", 2},
 				{"{ num count = 0; for (i = -0.4, -9.1, -1.6) { ++count; } count; }", 5},
@@ -833,8 +835,9 @@ namespace Pebble {
 				{"{ num O5(num x, num y = 3) { x + y; } O5(); }", ParseErrorType.ArgCountMismatch},
 				// -- attempting to call variable with more arguments than it has, even though it's value could handle them
 				{"{ num O6(num x, num y = 3) { x + y; } functype<num(num)> oneArgFunc = O6; oneArgFunc(1, 2); }", ParseErrorType.ArgCountMismatch},
-				// -- attempting to call variable *with default arg* with more arguments than it has, even though it's value could handle them
-				{"{ num O7(num x, num y = 3) { x + y; } functype<num(num = 3)> oneArgFunc = O7; oneArgFunc(3, 3); }", ParseErrorType.ArgCountMismatch},
+				// -- something other than a literal for a default value
+				{"{ num O7(num x = 3 + 2); }", ParseErrorType.SyntaxError},
+				{"{ num O8(List<num> ln = new List<num>); }", ParseErrorType.SyntaxError},
 				// -- function literals cant be const.
 				{"const num ConstFunc() { 0; }", ParseErrorType.FunctionLiteralsAreImplicitlyConst},
 				{"class ClassWithConstFunc { const num ConstFunc() { 0; } };", ParseErrorType.ClassMemberFunctionsConst},
@@ -843,11 +846,12 @@ namespace Pebble {
 				{"{ class ClassWithConstFunc2 { num ConstFunc() { 0; } }; ClassWithConstFunc2 cf2 = new; cf2.ConstFunc = null; }", ParseErrorType.AssignToConst},
 				// -- arguments cannot be const
 				{"void ConstArg(const num n) {}", ParseErrorType.SyntaxError},
+				// -- function variables with var args: this is not ok because fbbo may be called with 0 arguments, but fbb may hold a variable that requires at least 1.
+				{"{ functype<bool(bool)> fbb; functype < bool(bool ?) > fbbo; fbbo = fbb; }", ParseErrorType.TypeMismatch},
 
 				// -- errors in default values in function types
-				{"functype<num(num = 2, num = true)> nope;", ParseErrorType.TypeMismatch},
-				{"functype<num(num = 2, num)> nope;", ParseErrorType.DefaultArgGap},
-				{"functype<num(num = 2, num, num = 4)> nope;", ParseErrorType.DefaultArgGap},
+				{"functype<num(num ?, num)> nope;", ParseErrorType.DefaultArgGap},
+				{"functype<num(num ?, num, num ?)> nope;", ParseErrorType.DefaultArgGap},
 
 				// -- return types cannot be promoted
 				{"{ functype<B()> bFunc; A AFunc() { new A; } bFunc = AFunc; }", ParseErrorType.TypeMismatch},

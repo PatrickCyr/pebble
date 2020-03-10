@@ -317,7 +317,7 @@ namespace Pebble {
 					return thisScope;
 				};
 
-				TypeDef_Function comparatorType = TypeFactory.GetTypeDef_Function(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.TEMPLATE_0, IntrinsicTypeDefs.TEMPLATE_0 }, null, false, null, false, false);
+				TypeDef_Function comparatorType = TypeFactory.GetTypeDef_Function(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.TEMPLATE_0, IntrinsicTypeDefs.TEMPLATE_0 }, -1, false, null, false, false);
 
 				FunctionValue_Host newValue = new FunctionValue_Host(ourType, new ArgList { comparatorType }, eval, false, ourType);
 				classDef.AddMemberLiteral("Sort", newValue.valType, newValue);

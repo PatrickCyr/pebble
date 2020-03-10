@@ -179,22 +179,23 @@ TypeSpecifierNoFunc<ref ITypeRef type> =			(. string className = null; ITypeRef 
 			{',' TypeSpecifier<ref genType>			(. genericTypes.Add(genType); .) }
 		'>']										(. type = new TypeRef(className, genericTypes); .) .
 
-FunctionTypeArg<ref TypeRefList argTypes, ref LiteralList defaultValues>	(. ITypeRef argType = null; IExpr litValue = null; .)
+FunctionTypeArg<ref TypeRefList argTypes, ref BoolList argHasDefaults>	(. ITypeRef argType = null; .)
 =	TypeSpecifier<ref argType>						(. argTypes.Add(argType); .)
-	[ '=' Literal<ref litValue>						(.	while (defaultValues.Count < argTypes.Count)
-															defaultValues.Add(null);
-														defaultValues[defaultValues.Count - 1] = (Expr_Literal) litValue; .) 
+	[ '?'											(.	while (argHasDefaults.Count < argTypes.Count - 1)
+															argHasDefaults.Add(false);
+														argHasDefaults.Add(true); 
+													.) 
 	].
 
-FunctionType<ref ITypeRef varType>					(. ITypeRef retType = null; TypeRefList args = new TypeRefList(); LiteralList defaultValues = new LiteralList(); bool isConst = false; .)	
+FunctionType<ref ITypeRef varType>					(. ITypeRef retType = null; TypeRefList args = new TypeRefList(); BoolList argHasDefaults = new BoolList(); bool isConst = false; .)	
 =													
 	"functype" 
 	'<' (TypeSpecifier<ref retType> | "void"		(. retType = new TypeRef("void"); .) )
 	'(' 
-	[ FunctionTypeArg<ref args, ref defaultValues> 
-		{ ','  FunctionTypeArg<ref args, ref defaultValues> }
+	[ FunctionTypeArg<ref args, ref argHasDefaults> 
+		{ ','  FunctionTypeArg<ref args, ref argHasDefaults> }
 	]
-	')' '>'											(. varType = new TypeRef_Function(retType, args, defaultValues, false, isConst); .) .
+	')' '>'											(. varType = new TypeRef_Function(retType, args, argHasDefaults, false, isConst); .) .
 
 
 //----------------------------------

@@ -16,6 +16,31 @@ namespace Pebble {
 		
 		public TypeDef_Function valType;
 		public FunctionValue_Host.EvaluateDelegate Evaluate;
+
+		public List<Expr_Literal> argDefaultValues;
+		public int minArgs;
+		public List<bool> argHasDefaults = null;
+
+		protected void BuildArgHasDefaults(int argCount) {
+			minArgs = argCount;
+
+			if (null != argDefaultValues && 0 == argDefaultValues.Count)
+				argDefaultValues = null;
+			if (null == argDefaultValues)
+				return;	
+
+			Pb.Assert(argDefaultValues.Count == argCount, "Default values array length doesn't match arg array length.");
+
+			bool defaultFound = false;
+			argHasDefaults = new List<bool>();
+			for (int ii = 0; ii < argCount; ++ii) {
+				argHasDefaults.Add(null != argDefaultValues[ii]);
+				if (!defaultFound && null != argDefaultValues[ii]) {
+					defaultFound = true;
+					minArgs = ii;
+				}
+			}
+		}
 	}
 
 
@@ -31,8 +56,12 @@ namespace Pebble {
 		// NOTE: isStatic = true has never been tested. Library functions are static but are neither flagged as static nor as class members,
 		// so references can be saved to them by users already.
 		public FunctionValue_Host(ITypeDef _retType, List<ITypeDef> _argTypes, EvaluateDelegate _Evaluate, bool _varargs = false, TypeDef_Class classType = null, bool isStatic = false, List<Expr_Literal> defaultArgVals = null) {
-			valType = TypeFactory.GetTypeDef_Function(_retType, _argTypes, defaultArgVals, _varargs, classType, true, isStatic);
+			argDefaultValues = defaultArgVals;
+			BuildArgHasDefaults(_argTypes.Count);
+
+			valType = TypeFactory.GetTypeDef_Function(_retType, _argTypes, minArgs, _varargs, classType, true, isStatic);
 			Evaluate = _Evaluate;
+			
 		}
 	}
 
@@ -50,9 +79,12 @@ namespace Pebble {
 		public ClassDef staticClassDef;
 
 		public FunctionValue_Script(string name, IExpr _expr, ITypeRef _retType, List<ITypeRef> _argTypes, List<Expr_Literal> defaultVals = null) {
+			argDefaultValues = defaultVals;
+			BuildArgHasDefaults(_argTypes.Count);
+
 			originalName = name;
 			expr = _expr;
-			typeRef = new TypeRef_Function(_retType, _argTypes, defaultVals, false);
+			typeRef = new TypeRef_Function(_retType, _argTypes, argHasDefaults, false);
 			
 			Evaluate = (context, args, thisScope) => {
 				Pb.Assert(null != originalName);

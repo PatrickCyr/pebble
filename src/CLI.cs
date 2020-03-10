@@ -136,9 +136,6 @@ namespace Pebble {
 						Console.WriteLine(line);
 					}
 
-//!
-	Console.WriteLine("'" + line + "'");
-
 					object ret = engine.RunInteractiveScript(line, ref errors, optVerbose);
 					if (errors.Count == 0 && !(ret is RuntimeErrorInst)) {
 						if (null == ret) {

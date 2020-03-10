@@ -84,7 +84,7 @@ namespace Pebble {
 			//   Sets callback for assert results, returns previous callback.
 			//   Callback gets success as first variable, message as second. If returns false, system throws an Assert runtime exception.
 			{
-				TypeRef_Function handlerTypeRef = new TypeRef_Function(new TypeRef("bool"), new List<ITypeRef>() { new TypeRef("bool"), new TypeRef("string") }, null);
+				TypeRef_Function handlerTypeRef = new TypeRef_Function(new TypeRef("bool"), new List<ITypeRef>() { new TypeRef("bool"), new TypeRef("string") });
 				bool error = false;
 				TypeDef_Function handlerTypeDef = (TypeDef_Function) handlerTypeRef.Resolve(engine.defaultContext, ref error);
 				Pb.Assert(!error, "Internal error: SetAssertHandler initialization.");

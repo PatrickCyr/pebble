@@ -39,12 +39,15 @@ namespace Pebble {
 			return newDef;
 		}
 
-		public static TypeDef_Function GetTypeDef_Function(ITypeDef retType, List<ITypeDef> argTypes, List<Expr_Literal> defaultValues, bool _varargs, TypeDef_Class classType, bool isConst, bool isStatic) {
+		public static TypeDef_Function GetTypeDef_Function(ITypeDef retType, List<ITypeDef> argTypes, int minArgs, bool _varargs, TypeDef_Class classType, bool isConst, bool isStatic) {
+			if (minArgs < 0)
+				minArgs = argTypes.Count;
+
 			string args = "";
 			for (int ii = 0; ii < argTypes.Count; ++ii) {
 				string defaultValueString = "";
-				if (null != defaultValues && null != defaultValues[ii])
-					defaultValueString = " = " + (null != defaultValues[ii].value ? defaultValues[ii].value.ToString() : "null");
+				if (ii >= minArgs)
+					defaultValueString = " ?";
 				args += (ii == 0 ? "" : ", ") + argTypes[ii] + defaultValueString;
 			}
 
@@ -63,7 +66,7 @@ namespace Pebble {
 			if (_typeRegistry.ContainsKey(name))
 				return _typeRegistry[name] as TypeDef_Function;
 
-			TypeDef_Function newDef = new TypeDef_Function(retType, argTypes, defaultValues, _varargs, classType, isConst, isStatic);
+			TypeDef_Function newDef = new TypeDef_Function(retType, argTypes, minArgs, _varargs, classType, isConst, isStatic);
 			_typeRegistry.Add(name, newDef);
 			return newDef;
 		}
@@ -119,7 +122,7 @@ namespace Pebble {
 		}
 
 		public static TypeDef_Function GetClassVersion(TypeDef_Function original, TypeDef_Class classType, bool isStatic) {
-			return GetTypeDef_Function(original.retType, original.argTypes, original.defaultValues, original.varargs, classType, original.isConst, isStatic);
+			return GetTypeDef_Function(original.retType, original.argTypes, original.minArgs, original.varargs, classType, original.isConst, isStatic);
 		}
 	}
 
@@ -414,9 +417,8 @@ namespace Pebble {
 		public readonly ITypeDef retType;
 		// The types of the arguments
 		public readonly List<ITypeDef> argTypes;
-		// Default values for the args. This list must always be the same length as argTypes, or the list can be null.
-		// args without default values will have null in their slot in defaultValues.
-		public readonly List<Expr_Literal> defaultValues;
+		// The type only knows the minimum number of required arguments. If this function type has no arguments with default values, minArgs == argTypes.Count
+		public readonly int minArgs;
 		// If true, function accepts any number of arguments.  There must be at least one defined
 		// argument.  The type of the unspecified arguments is the type of the final defined argument.
 		public readonly bool varargs;
@@ -427,20 +429,20 @@ namespace Pebble {
 		// It's a little wonky to put this in the type, but CanStoreValue needs this information.
 		public readonly bool isStaticMember;
 
-		internal TypeDef_Function(ITypeDef _retType, List<ITypeDef> _argTypes, List<Expr_Literal> defaultVals, bool _varargs, TypeDef_Class classTypeIn, bool _isConst, bool _isStaticFunction) {
+		internal TypeDef_Function(ITypeDef _retType, List<ITypeDef> _argTypes, int _minArgs, bool _varargs, TypeDef_Class classTypeIn, bool _isConst, bool _isStaticFunction) {
 			retType = _retType;
 			argTypes = _argTypes;
-			defaultValues = defaultVals;
+			minArgs = _minArgs;
 			varargs = _varargs;
 			isConst = _isConst;
 			classType = classTypeIn;
 			isStaticMember = _isStaticFunction;
 
-			Pb.Assert(!_varargs || null == defaultValues, "internal error: function cannot be both varArgs and have arguments with default values.");
+			Pb.Assert(!_varargs || minArgs == _argTypes.Count, "internal error: function cannot be both varArgs and have arguments with default values.");
 		}
 
 		public virtual ITypeDef Clone(bool _isConst) {
-			return new TypeDef_Function(retType, argTypes, defaultValues, varargs, classType, _isConst, isStaticMember);
+			return new TypeDef_Function(retType, argTypes, minArgs, varargs, classType, _isConst, isStaticMember);
 		}
 
 		public virtual bool IsConst() {
@@ -451,8 +453,8 @@ namespace Pebble {
 			string args = "";
 			for (int ii = 0; ii < argTypes.Count; ++ii) {
 				string defaultString = "";
-				if (null != defaultValues && null != defaultValues[ii])
-					defaultString = " = " + (null != defaultValues[ii].value ? defaultValues[ii].value.ToString() : "null");
+				if (ii >= minArgs)
+					defaultString = "?";
 
 				args += (ii == 0 ? "" : ", ") + argTypes[ii] + defaultString;
 			}
@@ -471,7 +473,7 @@ namespace Pebble {
 				ITypeDef argdef = argTypes[iArg] as ITypeDef;
 				if (0 != iArg)
 					result += ", ";
-				result += argdef.ToString();
+				result += argdef.ToString() + (iArg >= minArgs ? "?" : "");
 			}
 			if (varargs)
 				result += "[, ...]";
@@ -483,8 +485,8 @@ namespace Pebble {
 			string args = "";
 			for (int ii = 0; ii < argTypes.Count; ++ii) {
 				string defaultString = "";
-				if (null != defaultValues && null != defaultValues[ii])
-					defaultString = " = " + defaultValues[ii].value.ToString();
+				if (ii >= minArgs)
+					defaultString = "?";
 				args += (ii == 0 ? "" : ", ") + argTypes[ii].GetName() + defaultString;
 			}
 
@@ -520,36 +522,18 @@ namespace Pebble {
 			if (null == other)
 				return false;
 
-			bool argsMatch = true;
+			if (minArgs != other.minArgs)
+				return false;
+
 			if (argTypes.Count == other.argTypes.Count) {
 				for (int ii = 0; ii < argTypes.Count; ++ii) {
 					if (argTypes[ii] != other.argTypes[ii])
-						argsMatch = false;
+						return false;
 				}
 			} else
-				argsMatch = false;
-
-			if ((null == defaultValues) != (null == other.defaultValues))
 				return false;
 
-			// Make sure default values are also the same.
-			if (null != defaultValues) {
-				for (int ii = 0; ii < defaultValues.Count; ++ii) {
-					if (null == defaultValues[ii]) {
-						if (null != other.defaultValues[ii])
-							return false;
-					} else {
-						if (null == other.defaultValues[ii])
-							return false;
-						else {
-							if (!defaultValues[ii].value.Equals(other.defaultValues[ii].value))
-								return false;
-						}
-					}
-				}
-			}
-
-			return (retType == other.retType) && argsMatch && (varargs == other.varargs);
+			return (retType == other.retType) && (varargs == other.varargs);
 		}
 
 		public override int GetHashCode() {
@@ -577,29 +561,27 @@ namespace Pebble {
 			if (!retType.Equals(IntrinsicTypeDefs.VOID) && !retType.CanStoreValue(context, funcValueType.retType))
 				return false;
 
-			// Not enough arguments.
+			if (null != classType) {
+				if (null == funcValueType.classType || !classType.CanStoreValue(context, funcValueType.classType))
+					return false;
+				// This is the point of isStatic in this class. This is saying, "I can save a reference to a class member function only if it is static."
+			} else if (null != funcValueType.classType && !funcValueType.isStaticMember)
+				return false;
+
+			// Mismatch if other's max args exceeds our max args.
 			if (argTypes.Count > funcValueType.argTypes.Count)
 				return false;
 
-			if (argTypes.Count < funcValueType.argTypes.Count) {
-				// (Assuming that if this first arg has a default value, all subsequent ones do.)
-				if (null == funcValueType.defaultValues || null == funcValueType.defaultValues[argTypes.Count]) {
-					// Too many arguments, and they don't have default values.
-					return false;
-				}
-			}
+			// Mismatch if we have fewer min args than they do. 
+			// (Meaning we could be called with fewer arguments than they have default values for.)
+			if (minArgs < funcValueType.minArgs)
+				return false;
 
+			// Make sure that for every argument WE have, THEIR argument's type matches.
 			for (int ii = 0; ii < argTypes.Count; ++ii) {
 				if (!funcValueType.argTypes[ii].CanStoreValue(context, argTypes[ii]))
 					return false;
 			}
-
-			if (null != classType) {
-				if (null == funcValueType.classType || !classType.CanStoreValue(context, funcValueType.classType))
-					return false;
-			// This is the point of isStatic in this class. This is saying, "I can save a reference to a class member function only if it is static."
-			} else if (null != funcValueType.classType && !funcValueType.isStaticMember)
-				return false;
 
 			return true;
 		}
@@ -616,7 +598,7 @@ namespace Pebble {
 			ITypeDef newRetType = retType.ResolveTemplateTypes(genericTypes, ref modified);
 			if (null != classType)
 				classType.ResolveTemplateTypes(genericTypes, ref modified);
-			return TypeFactory.GetTypeDef_Function(newRetType, args, defaultValues, varargs, classType, isConst, isStaticMember);
+			return TypeFactory.GetTypeDef_Function(newRetType, args, minArgs, varargs, classType, isConst, isStaticMember);
 		}
 	}
 
@@ -886,20 +868,20 @@ namespace Pebble {
 		value and arguments, but it knows their names so they can be looked up.
 	*/
 	public class TypeRef_Function : ITypeRef {
-		public ITypeRef retType;
-		public List<ITypeRef> argTypes;
-		public List<Expr_Literal> defaultValues;
-		public bool varArgs;
+		readonly public ITypeRef retType;
+		readonly public List<ITypeRef> argTypes;
+		readonly public List<bool> argHasDefaults;
+		readonly public bool varArgs;
 		public string className;
 
-		public TypeRef_Function(ITypeRef retTypeIn, List<ITypeRef> argTypesIn, List<Expr_Literal> defaultValuesIn, bool varArgsIn = false, bool isConst = false) {
+		public TypeRef_Function(ITypeRef retTypeIn, List<ITypeRef> argTypesIn, List<bool> argHasDefaultsIn = null, bool varArgsIn = false, bool isConst = false) {
 			retType = retTypeIn;
 			argTypes = argTypesIn;
 			varArgs = varArgsIn;
 			_isConst = isConst;
-			defaultValues = defaultValuesIn;
-			if (null != defaultValues && 0 == defaultValues.Count)
-				defaultValues = null;
+			argHasDefaults = argHasDefaultsIn;
+			if (null != argHasDefaults && argHasDefaults.Count == 0)
+				argHasDefaults = null;
 		}
 
 		/*
@@ -917,17 +899,21 @@ namespace Pebble {
 				return null;
 			}
 
-			if (null != defaultValues && defaultValues.Count < argTypes.Count) {
+			if (null != argHasDefaults && argHasDefaults.Count < argTypes.Count) {
 				context.engine.LogCompileError(ParseErrorType.DefaultArgGap, "An argument with a default value is followed by an argument without one.");
 				error = true;
 				return null;
 			}
-			if (null != defaultValues) {
+
+			int minArgs = argTypes.Count;
+			if (null != argHasDefaults) {
 				int firstDefault = -1;
-				for (int ii = 0; ii < defaultValues.Count; ++ii) {
-					if (null != defaultValues[ii]) {
-						if (firstDefault < 0)
+				for (int ii = 0; ii < argHasDefaults.Count; ++ii) {
+					if (argHasDefaults[ii]) {
+						if (firstDefault < 0) {
 							firstDefault = ii;
+							minArgs = ii;
+						}
 					} else if (firstDefault >= 0) {
 						context.engine.LogCompileError(ParseErrorType.DefaultArgGap, "An argument with a default value is followed by an argument without one.");
 						error = true;
@@ -946,15 +932,6 @@ namespace Pebble {
 				}
 
 				argValTypes.Add(argValType);
-
-				if (null != defaultValues && null != defaultValues[ii]) {
-					ITypeDef valueType = defaultValues[ii].TypeCheck(context, ref error);
-					if (!argValType.CanStoreValue(context, valueType)) {
-						context.engine.LogCompileError(ParseErrorType.TypeMismatch, "Argument #" + ii + "'s type (" + argValType + ") can't hold default value of type (" + valueType + ").");
-						error = true;
-						return null;
-					}
-				}
 			}
 
 			TypeDef_Class classType = null;
@@ -965,7 +942,7 @@ namespace Pebble {
 				classType = classDef.typeDef;
 			}
 
-			var ret = TypeFactory.GetTypeDef_Function(retValType, argValTypes, defaultValues, varArgs, classType, _isConst, false);
+			var ret = TypeFactory.GetTypeDef_Function(retValType, argValTypes, minArgs, varArgs, classType, _isConst, false);
 			return ret;
 		}
 	}

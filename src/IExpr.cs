@@ -217,27 +217,16 @@ namespace Pebble {
 						}
 					}
 
-					if (null != funcType.defaultValues) {
-						// Easy gap check.
-						if (funcType.defaultValues.Count > 0 && funcType.defaultValues.Count < funcType.argTypes.Count) {
-							LogCompileErr(context, ParseErrorType.DefaultArgGap, "Function (" + funcType.GetName() + ") has argument without default value following an argument with a default value.");
-							error = true;
-						}
-
+					// Every function written in Pebble is a literal. This is where we type check any default values in Pebble script function arguments for type correctness.
+					if (funcType.minArgs < funcType.argTypes.Count) {
 						// More thorough gap check, and default value type check.
-						int firstDefaultValue = -1;
-						for (int ii = 0; ii < funcType.defaultValues.Count; ++ii) {
-							if (null != funcType.defaultValues[ii]) {
-								if (-1 == firstDefaultValue)
-									firstDefaultValue = ii;
-								ITypeDef defaultType = funcType.defaultValues[ii].TypeCheck(context, ref error);
+						if (null != inLang.argDefaultValues) { 
+							for (int ii = funcType.minArgs; ii < funcType.argTypes.Count; ++ii) {
+								ITypeDef defaultType = inLang.argDefaultValues[ii].TypeCheck(context, ref error);
 								if (!funcType.argTypes[ii].CanStoreValue(context, defaultType)) {
 									LogCompileErr(context, ParseErrorType.TypeMismatch, "Function (" + funcType.GetName() + ") argument #" + ii + " type doesn't match default value type.");
 									error = true;
 								}
-							} else if (firstDefaultValue != -1) {
-								LogCompileErr(context, ParseErrorType.DefaultArgGap, "Function (" + funcType.GetName() + ") argument without default value follows an argument with a default value.");
-								error = true;
 							}
 						}
 					}
@@ -753,17 +742,7 @@ namespace Pebble {
 				}
 			} else {
 				if (fType.argTypes.Count != args.Count) {
-					bool countMismatch = false;
-					// If we got more arguments than the variable's type takes, it's definitely an error.
-					if (args.Count > fType.argTypes.Count) {
-						countMismatch = true;
-					// else we got fewer arguments than the type takes. So, if the type doesn't have default values at all, or if we don't have default values
-					// starting at the arg after the last we got, it's an error.
-					}  else if (fType.defaultValues == null || null == fType.defaultValues[args.Count]) {
-						countMismatch = true;
-					}
-
-					if (countMismatch) {
+					if (args.Count > fType.argTypes.Count || args.Count < fType.minArgs) {
 						LogCompileErr(context, ParseErrorType.ArgCountMismatch, "Function (" + _name + ") requires " + fType.argTypes.Count + " args, got " + args.Count + ".");
 						error = true;
 					}
@@ -845,6 +824,7 @@ namespace Pebble {
 				}
 
 				// Fill in default values for unprovided arguments.
+				/*
 				TypeDef_Function tdf = funcVal.valType;
 				// Here, we first see if the value's type has a default value, and use that if so.
 				// If not, use the variable type's default value.
@@ -856,6 +836,14 @@ namespace Pebble {
 						TypeDef_Function varTypeDef = (TypeDef_Function)_funcExpr.GetTypeDef();
 						argVal = varTypeDef.defaultValues[ii].Evaluate(context);
 					}
+					argvals.Add(argVal);
+				}
+				*/
+				for (int ii = args.Count; ii < funcVal.valType.argTypes.Count; ++ii) {
+					object argVal;
+					argVal = funcVal.argDefaultValues[ii].Evaluate(context);
+					if (context.IsRuntimeErrorSet())
+						return null;
 					argvals.Add(argVal);
 				}
 
@@ -1094,24 +1082,39 @@ namespace Pebble {
 		public bool isFunctionLiteral = false;
 		public ITypeDef typeDef;
 		protected bool _funcInitError = false;
+		protected bool _insufficientDefaults = false;
 
+		// This is called by the parser.
 		public static IExpr CreateFunctionLiteral(Parser parser, ITypeRef retType, string sym, List<ITypeRef> argTypes, List<Expr_Literal> defaultValues, List<string> argNames, IExpr body, DeclMods mods) {
+			int minArgs = argTypes.Count;
+			if (null != defaultValues && 0 == defaultValues.Count) 
+				defaultValues = null;
+
+			// The default arg checking code scattered everywhere assumes we have enough default values. This code here
+			// makes sure we have enough values, but if we don't have enough we flag an error on the Expr_Set.
+			// Seemed to make more sense to catch the error immediately.
+			List<bool> argHasDefaults = null;
+			bool insufficientDefaults = false;
 			if (null != defaultValues) {
-				if (0 == defaultValues.Count) {
-					defaultValues = null;
-				} else {
-					// If this while actually adds values we are almost surely in an error case where
-					// an argument with a default value is followed by one without one.
-					while (defaultValues.Count < argTypes.Count)
+				Pb.Assert(defaultValues.Count <= argTypes.Count, "internal error: somehow we got more default values than arguments.");
+				if (defaultValues.Count < argTypes.Count) {
+					insufficientDefaults = true;
+					for (int ii = defaultValues.Count; ii < argTypes.Count; ++ii)
 						defaultValues.Add(null);
+				} 
+
+				argHasDefaults = new List<bool>();
+				for (int ii = 0; ii < defaultValues.Count; ++ii) {
+					argHasDefaults.Add(null != defaultValues[ii]);
 				}
 			}
 
 			// all function literals are const
-			TypeRef_Function funcTypeRef = new TypeRef_Function(retType, argTypes, defaultValues, false, true);
+			TypeRef_Function funcTypeRef = new TypeRef_Function(retType, argTypes, argHasDefaults, false, true);
 
 			Expr_Set result = new Expr_Set(parser, funcTypeRef, sym, mods);
 			result.isFunctionLiteral = true;
+			result._insufficientDefaults = insufficientDefaults;
 
 			// This is not the right ret type.  The actual type is whatever the type of body is, but we won't know that 
 			// until the TypeCheck phase.
@@ -1145,6 +1148,12 @@ namespace Pebble {
 		}
 
 		override public ITypeDef TypeCheck(ExecContext context, ref bool error) {
+			if (_insufficientDefaults) {
+				LogCompileErr(context, ParseErrorType.DefaultArgGap, "An argument with a default value is followed by an argument without one.");
+				error = true;
+				return null;
+			}
+
 			if (null == owningClass) {
 				if (declMods._static) {
 					LogCompileErr(context, ParseErrorType.StaticClassMembersOnly, "Only class members can be static.");

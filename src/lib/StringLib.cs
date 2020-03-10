@@ -246,6 +246,9 @@ namespace Pebble {
 						}
 
 						List<string> dlist = delimsList.GetNativeList();
+
+						// Usually I like to wrap native functions with a try-catch but I couldn't find a
+						// way to make this throw an exception.
 						splitted = a.Split(dlist.ToArray(), StringSplitOptions.None);
 					}
 
