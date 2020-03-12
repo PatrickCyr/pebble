@@ -108,20 +108,20 @@ namespace Pebble {
 				classDef.AddMemberLiteral("Format", newValue.valType, newValue, true);
 			}
 
-			//@ static num IndexOfChar(string toBeSearched, string searchChars)
+			//@ static num IndexOfChar(string toBeSearched, string searchChars, num startIndex = 0)
 			//   Returns the index of the first instance of any of the characters in search.
 			{
 				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
 					string a = (string)args[0];
 					string b = (string)args[1];
+					int startIndex = Convert.ToInt32((double)args[2]);
 
 					if (0 == a.Length || 0 == b.Length)
 						return -1.0;
 
 					int lowestIx = Int32.MaxValue;
-
 					foreach (char c in b) {
-						int ix = a.IndexOf(c);
+						int ix = a.IndexOf(c, startIndex);
 						if (ix >= 0 && ix < lowestIx)
 							lowestIx = ix;
 					}
@@ -132,26 +132,106 @@ namespace Pebble {
 					return -1.0;
 				};
 
-				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.STRING }, eval, false);
+				List<Expr_Literal> defaultArgVals = new List<Expr_Literal>();
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(new Expr_Literal(null, 0.0, IntrinsicTypeDefs.NUMBER));
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.NUMBER }, eval, false, null, true, defaultArgVals);
 				classDef.AddMemberLiteral("IndexOfChar", newValue.valType, newValue, true);
 			}
 
-			//@ static num IndexOfString(string toBeSearched, string searchString)
+			//@ static num IndexOfString(string toBeSearched, string searchString, num startIndex = 0)
 			//   Returns the index of the first instance of the entire search string.
 			{
 				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
 					string a = (string)args[0];
 					string b = (string)args[1];
+					int startIndex = Convert.ToInt32((double)args[2]);
 
 					if (0 == a.Length || 0 == b.Length)
 						return -1.0;
 
-					int ix = a.IndexOf(b);
+					int ix = a.IndexOf(b, startIndex);
 					return Convert.ToDouble(ix);
 				};
 
-				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.STRING }, eval, false);
+				List<Expr_Literal> defaultArgVals = new List<Expr_Literal>();
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(new Expr_Literal(null, 0.0, IntrinsicTypeDefs.NUMBER));
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.NUMBER }, eval, false, null, true, defaultArgVals);
 				classDef.AddMemberLiteral("IndexOfString", newValue.valType, newValue, true);
+			}
+
+			//@ static num LastIndexOfChar(string toBeSearched, string searchChars, num startIndex = -1)
+			//   Returns the index of the last instance of the entire search string, 
+			//   If startIndex is >= 0, starts searching backwards from the given index.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					string a = (string)args[0];
+					string b = (string)args[1];
+					int startIndex = Convert.ToInt32((double)args[2]);
+
+					if (0 == a.Length || 0 == b.Length)
+						return -1.0;
+
+					if (startIndex < 0)
+						startIndex = a.Length - 1;
+					else if (startIndex >= a.Length) {
+						context.SetRuntimeError(RuntimeErrorType.ArgumentInvalid, "LastIndexOfChar startIndex argument is greater than the length of the string.");
+						return null;
+					}
+
+					char[] chars = b.ToCharArray();
+					int lowestIx = Int32.MaxValue;
+					foreach (char c in b) {
+						int ix = a.LastIndexOfAny(chars, startIndex);
+						if (ix >= 0 && ix < lowestIx)
+							lowestIx = ix;
+					}
+
+					if (lowestIx < Int32.MaxValue)
+						return Convert.ToDouble(lowestIx);
+					return -1.0;
+				};
+
+				List<Expr_Literal> defaultArgVals = new List<Expr_Literal>();
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(new Expr_Literal(null, -1.0, IntrinsicTypeDefs.NUMBER));
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.NUMBER }, eval, false, null, true, defaultArgVals);
+				classDef.AddMemberLiteral("LastIndexOfChar", newValue.valType, newValue, true);
+			}
+
+			//@ static num LastIndexOfString(string toBeSearched, string searchString, num startIndex = -1)
+			//   Returns the index of the last instance of the entire search string, 
+			//   If startIndex is > 0, starts searching backwards from the given index.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					string a = (string)args[0];
+					string b = (string)args[1];
+					int startIndex = Convert.ToInt32((double)args[2]);
+
+					if (0 == a.Length || 0 == b.Length)
+						return -1.0;
+
+					if (startIndex < 0)
+						startIndex = a.Length - 1;
+					else if (startIndex >= a.Length) {
+						context.SetRuntimeError(RuntimeErrorType.ArgumentInvalid, "LastIndexOfString startIndex argument is greater than the length of the string.");
+						return null;
+					}
+
+					int ix = a.LastIndexOf(b, startIndex);
+					return Convert.ToDouble(ix);
+				};
+
+				List<Expr_Literal> defaultArgVals = new List<Expr_Literal>();
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(null);
+				defaultArgVals.Add(new Expr_Literal(null, -1.0, IntrinsicTypeDefs.NUMBER));
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.NUMBER }, eval, false, null, true, defaultArgVals);
+				classDef.AddMemberLiteral("LastIndexOfString", newValue.valType, newValue, true);
 			}
 
 			//@ static num Length(string)
@@ -412,6 +492,16 @@ namespace Pebble {
 			result &= engine.RunTest("String::IndexOfString(\"Hello, world!\", \"poo\");", -1, verbose);
 			result &= engine.RunTest("String::IndexOfString(\"Hello, world!\", \"\");", -1, verbose);
 			result &= engine.RunTest("String::IndexOfString(\"\", \"a\");", -1, verbose);
+			result &= engine.RunTest("String::LastIndexOfChar(\"a..b..c\", \".\");", 5, verbose);
+			result &= engine.RunTest("String::LastIndexOfChar(\"a..b..c\", \".\", 3);", 2, verbose);
+			result &= engine.RunTest("String::LastIndexOfChar(\"a..b..c\", \"a\", 0);", 0, verbose);
+			result &= engine.RunTest("String::LastIndexOfChar(\"a..b..c\", \"@\");", -1, verbose);
+			result &= engine.RunTest("String::LastIndexOfChar(\"a..b..c\", \"\");", -1, verbose);
+			result &= engine.RunTest("String::LastIndexOfString(\"a..b..c\", \"..\");", 4, verbose);
+			result &= engine.RunTest("String::LastIndexOfString(\"a..b..c\", \"..\", 3);", 1, verbose);
+			result &= engine.RunTest("String::LastIndexOfString(\"a..b..c\", \"a\", 0);", 0, verbose);
+			result &= engine.RunTest("String::LastIndexOfString(\"a..b..c\", \"@\", 3);", -1, verbose);
+			result &= engine.RunTest("String::LastIndexOfString(\"a..b..c\", \"\", 3);", -1, verbose);
 			result &= engine.RunTest("String::Length(\"\");", 0, verbose);
 			result &= engine.RunTest("String::Length(\"pOo 42\");", 6, verbose);
 			result &= engine.RunTest("String::PadLeft(\"AAA\", 5, \"B\");", "BBAAA", verbose);
@@ -423,8 +513,8 @@ namespace Pebble {
 			result &= engine.RunTest("String::Replace(\"hello\", \"l\", \"\");", "heo", verbose);
 			result &= engine.RunTest("String::Replace(\"hello\", \"z\", \"pop\");", "hello", verbose);
 			result &= engine.RunTest("String::Replace(\"\", \"a\", \"hello\");", "", verbose);
-			result &= engine.RunTest("{ List<string> split = String::Split(\"Hello,\\nworld!\"); Print(split); 2 == #split && \"Hello,\" == split[0] && \"world!\" == split[1]; }", true, verbose);
-			result &= engine.RunTest("{ List<string> split = String::Split(\"Hello,\\nworld!\", new List<string> { Add(\"\\n\"); }); Print(split); 2 == #split && \"Hello,\" == split[0] && \"world!\" == split[1]; }", true, verbose);
+			result &= engine.RunTest("{ List<string> split = String::Split(\"Hello,\\nworld!\"); 2 == #split && \"Hello,\" == split[0] && \"world!\" == split[1]; }", true, verbose);
+			result &= engine.RunTest("{ List<string> split = String::Split(\"Hello,\\nworld!\", new List<string> { Add(\"\\n\"); }); 2 == #split && \"Hello,\" == split[0] && \"world!\" == split[1]; }", true, verbose);
 			result &= engine.RunTest("String::StartsWith(\"PoopyButt\", \"Poo\");", true, verbose);
 			result &= engine.RunTest("String::StartsWith(\"PoopyButt\", \"poo\");", false, verbose);
 			result &= engine.RunTest("String::Substring(\"pOo 42\", 3, 3);", " 42", verbose);
@@ -445,6 +535,8 @@ namespace Pebble {
 
 			//seems to work but the breakpoint on exception is annoying 
 			//result &= engine.RunRuntimeFailTest("String::Format(\"{1}\", 1);", RuntimeErrorType.NativeException, verbose);
+			result &= engine.RunRuntimeFailTest("String::LastIndexOfChar(\"hello\", \"e\", 100);", RuntimeErrorType.ArgumentInvalid, verbose);
+			result &= engine.RunRuntimeFailTest("String::LastIndexOfString(\"hello\", \"e\", 100);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Replace(\"hello\", \"\", \"pop\");", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Split(\"hello\", new List<string>);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", -1 , 0);", RuntimeErrorType.ArgumentInvalid, verbose);
