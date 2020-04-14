@@ -230,8 +230,10 @@ namespace Pebble {
 
 
 			////////////////////////////////////////////////////////////////////////////
+			// Register non-optional libraries.
 
 			//CoreResult.Register(engine);
+			// List and Dictionary probably need to be first because other libraries sometimes use them.
 			CoreList.Register(engine);
 			CoreDictionary.Register(engine);
 			MathLib.Register(engine);

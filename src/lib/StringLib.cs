@@ -5,6 +5,7 @@ See Copyright Notice in LICENSE.TXT
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 using ArgList = System.Collections.Generic.List<Pebble.ITypeDef>;
 
@@ -18,10 +19,19 @@ namespace Pebble {
 
 			//@ class String
 
-			// Because the type has the ! in it, users cannot attempt to use the type at all.
 			TypeDef_Class ourType = TypeFactory.GetTypeDef_Class("String", null, false);
 			ClassDef classDef = engine.defaultContext.CreateClass("String", ourType, null, null, true);
 			classDef.Initialize();
+
+			// This makes sure List<num> is registered in the type library, as this class uses it and we can't rely
+			// scripts to register it.
+			{
+				List<ITypeDef> gTypes = new ArgList();
+				gTypes.Add(IntrinsicTypeDefs.NUMBER);
+
+				TypeDef_Class listNumTypeDef = TypeFactory.GetTypeDef_Class("List", gTypes, false);
+				ClassDef listNumClassDef = engine.defaultContext.RegisterIfUnregisteredTemplate(listNumTypeDef);
+			}
 
 			//@ static num CompareTo(string, string)
 			//   Wraps C# CompareTo function, which essentially returns a number < 0 if a comes before b 
@@ -106,6 +116,42 @@ namespace Pebble {
 
 				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.STRING, new ArgList { IntrinsicTypeDefs.STRING, IntrinsicTypeDefs.ANY }, eval, true);
 				classDef.AddMemberLiteral("Format", newValue.valType, newValue, true);
+			}
+
+			//@ static List<string> GetCharList(string)
+			//   Returns a list of strings containing one character of the input string.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					string source = (string)args[0];
+
+					PebbleList list = PebbleList.AllocateListString(context, "String::GetCharList result");
+					foreach (char c in source.ToCharArray())
+						list.list.Add(new Variable(null, IntrinsicTypeDefs.STRING, Convert.ToString(c)));
+
+					return list;
+				};
+
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.LIST_STRING, new ArgList { IntrinsicTypeDefs.STRING }, eval, false);
+				classDef.AddMemberLiteral("GetCharList", newValue.valType, newValue, true);
+			}
+
+			//@ static List<num> GetUnicode(string)
+			//   Returns the Unicode numeric values for the characters in the input string.
+			//   Returns an empty list if the string is empty.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					string source = (string)args[0];
+
+					PebbleList list = PebbleList.AllocateListString(context, "String::GetUnicode result");
+					foreach (char c in source.ToCharArray())
+						//! maybe write a convenince add function
+						list.list.Add(new Variable(null, IntrinsicTypeDefs.NUMBER, Convert.ToDouble(Convert.ToInt32(c))));
+
+					return list;
+				};
+
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.LIST_NUMBER, new ArgList { IntrinsicTypeDefs.STRING }, eval, false);
+				classDef.AddMemberLiteral("GetUnicode", newValue.valType, newValue, true);
 			}
 
 			//@ static num IndexOfChar(string toBeSearched, string searchChars, num startIndex = 0)
@@ -465,6 +511,29 @@ namespace Pebble {
 				classDef.AddMemberLiteral("Trim", newValue.valType, newValue, true);
 			}
 
+			//@ static string UnicodeToString(List<num>)
+			//   Takes a list of numeric Unicode character codes, converts them to characters, concatenates them, and returns the resultant string.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					PebbleList list = args[0] as PebbleList;
+					string result = "";
+					try {
+						foreach (Variable v in list.list) {
+							double d = (double)v.value;
+							result += Convert.ToChar(Convert.ToInt32(d));
+						}
+					} catch (Exception e) {
+						context.SetRuntimeError(RuntimeErrorType.NativeException, e.ToString());
+						return null;
+					}
+
+					return result;
+				};
+
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.STRING, new ArgList { IntrinsicTypeDefs.LIST_NUMBER }, eval, false);
+				classDef.AddMemberLiteral("UnicodeToString", newValue.valType, newValue, true);
+			}
+
 			classDef.FinalizeClass(engine.defaultContext);
 		}
 
@@ -484,6 +553,11 @@ namespace Pebble {
 			result &= engine.RunTest("String::EqualsI(\"HI\", \"hi\");", true, verbose);
 			result &= engine.RunTest("String::EqualsI(\"HI\", \"high\");", false, verbose);
 			result &= engine.RunTest("String::Format(\"{0:#.###}\", 4/3);", "1.333", verbose);
+			result &= engine.RunTest("String::GetCharList(\"\").Count();", 0, verbose);
+			result &= engine.RunTest("String::GetCharList(\"abc\")[2];", "c", verbose);
+			result &= engine.RunTest("String::GetUnicode(\"\").Count();", 0, verbose);
+			result &= engine.RunTest("String::GetUnicode(\"0\")[0];", 48, verbose);
+			result &= engine.RunTest("String::GetUnicode(\"ü\")[0];", 252, verbose);
 			result &= engine.RunTest("String::IndexOfChar(\"Hello, world!\", \" !,\");", 5, verbose);
 			result &= engine.RunTest("String::IndexOfChar(\"Hello, world!\", \"z\");", -1, verbose);
 			result &= engine.RunTest("String::IndexOfChar(\"Hello, world!\", \"\");", -1, verbose);
@@ -525,6 +599,10 @@ namespace Pebble {
 			result &= engine.RunTest("String::Trim(\" p oo\");", "p oo", verbose);
 			result &= engine.RunTest("String::Trim(\"po o \");", "po o", verbose);
 			result &= engine.RunTest("String::Trim(\"\");", "", verbose);
+			result &= engine.RunTest("{ List<num> uc = new; String::UnicodeToString(uc); }", "", verbose);
+			result &= engine.RunTest("{ List<num> uc = new { Add(48); }; String::UnicodeToString(uc); }", "0", verbose);
+			result &= engine.RunTest("{ List<num> uc = new { Add(48).Add(49); }; String::UnicodeToString(uc); }", "01", verbose);
+			result &= engine.RunTest("{ List<num> uc = new { Add(48.1).Add(48.6); }; String::UnicodeToString(uc); }", "01", verbose);
 
 			bool sav = engine.logCompileErrors;
 			engine.logCompileErrors = false;
@@ -543,6 +621,7 @@ namespace Pebble {
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", 0 , -1);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", 10 , 1);", RuntimeErrorType.ArgumentInvalid, verbose);
 			result &= engine.RunRuntimeFailTest("String::Substring(\"hello\", 0 , 10);", RuntimeErrorType.ArgumentInvalid, verbose);
+			result &= engine.RunRuntimeFailTest("{ List<num> uc = new { Add(-48); }; String::UnicodeToString(uc); }", RuntimeErrorType.NativeException, verbose);
 
 			engine.logCompileErrors = sav;
 			engine.Log("*** StringLib: Tests " + (result ? "succeeded" : "FAILED"));

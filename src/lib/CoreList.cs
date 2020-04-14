@@ -15,6 +15,15 @@ namespace Pebble {
 
 		private static ClassDef _listClassDef = null;
 
+		public static PebbleList AllocateListNum(ExecContext context, string debugName = "(List<num> inst)") {
+			if (null == _listClassDef)
+				_listClassDef = context.GetClass("List<num>");
+			PebbleList listinst = (PebbleList)_listClassDef.childAllocator();
+			listinst.classDef = _listClassDef;
+			listinst.debugName = debugName;
+			return listinst;
+		}
+
 		public static PebbleList AllocateListString(ExecContext context, string debugName = "(List<string> inst)") {
 			if (null == _listClassDef)
 				_listClassDef = context.GetClass("List<string>");

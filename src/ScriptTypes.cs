@@ -965,6 +965,7 @@ namespace Pebble {
 		public static TypeDef_Template TEMPLATE_1 = new TypeDef_Template(1);
 		public static TypeDef_Template TEMPLATE_2 = new TypeDef_Template(2);
 
+		public static TypeDef_Class LIST_NUMBER = TypeFactory.GetTypeDef_Class("List", new ArgList { IntrinsicTypeDefs.NUMBER }, false);
 		public static TypeDef_Class LIST_STRING = TypeFactory.GetTypeDef_Class("List", new ArgList { IntrinsicTypeDefs.STRING }, false);
 	}
 
