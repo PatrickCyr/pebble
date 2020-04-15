@@ -6,10 +6,11 @@ See Copyright Notice in LICENSE.TXT
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Pebble;
 
 #if PEBBLECLI
 
-namespace Pebble {
+namespace PebbleCLI {
 	class PebbleCLI {
 		public static void Main(string[] arg) {
 
@@ -51,7 +52,7 @@ namespace Pebble {
 							passThroughArgs = passThroughArgs ?? new List<string>();
 							passThroughArgs.Add(arg[++iArg]);
 						}
-					}  else {
+					} else {
 						Console.WriteLine("Unrecognized option '" + ar[1] + "'.");
 						PrintUsage();
 						return;
@@ -172,7 +173,6 @@ namespace Pebble {
 			Console.WriteLine("-v : verbose mode");
 		}
 	}
-
-} // end namespace
+}
 
 #endif

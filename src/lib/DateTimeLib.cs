@@ -1,6 +1,8 @@
 /*
 DateTime library (date and time functions).
 See Copyright Notice in LICENSE.TXT
+
+This library is optional. Its Register function must be called if you want to use it.
 */
 
 using System;
@@ -379,6 +381,8 @@ namespace Pebble {
 			}
 
 			classDef.FinalizeClass(engine.defaultContext);
+
+			UnitTests.testFuncDelegates.Add("DateTimeLib", RunTests);
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {

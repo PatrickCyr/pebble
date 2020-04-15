@@ -1,6 +1,8 @@
 /*
 Debug library (functions for helping to debug Pebble programs).
 See Copyright Notice in LICENSE.TXT
+
+This library is optional. Its Register function must be called if you want to use it.
 */
 
 using System;

@@ -1,6 +1,8 @@
 ﻿/*
 Implementation of Pebble's built-in Dictionary<K,V> type.
 See Copyright Notice in LICENSE.TXT
+
+This library is automatically registered (see CoreLib.cs). Programs don't need to register it manually.
 */
 
 using System;
@@ -233,6 +235,8 @@ namespace Pebble {
 			bool error = false;
 			classDef.FinalizeClass(engine.defaultContext);
 			Pb.Assert(!error);
+
+			UnitTests.testFuncDelegates.Add("CoreDictionary", RunTests);
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {

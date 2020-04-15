@@ -1,6 +1,8 @@
 /*
 The Stream class.
 See Copyright Notice in LICENSE.TXT
+
+This library is automatically registered (see CoreLib.cs). Programs don't need to register it manually.
 */
 
 using System;
@@ -443,12 +445,13 @@ namespace Pebble {
 			}
 
 			classDef.FinalizeClass(engine.defaultContext);
+
+			UnitTests.testFuncDelegates.Add("StreamLib", RunTests);
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {
 			bool result = true;
 			engine.Log("\n*** StreamLib: Running tests...");
-
 
 			result &= engine.RunTest("{ Stream badFileStream = new; bool result = badFileStream.OpenWriteBinary(\"bad/filename\"); !result && !badFileStream.IsOpen(); }", true, verbose);
 

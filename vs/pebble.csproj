@@ -7,7 +7,7 @@
     <ProjectGuid>{3105ECD8-65AF-4040-94E5-E40CE4501017}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>pebble</RootNamespace>
+    <RootNamespace>PebbleCLI</RootNamespace>
     <AssemblyName>pebblecli</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -47,7 +47,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>Pebble.PebbleCLI</StartupObject>
+    <StartupObject>PebbleCLI.PebbleCLI</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

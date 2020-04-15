@@ -1,6 +1,8 @@
 ﻿/*
 Implementation of Pebble's built-in List<V> type.
 See Copyright Notice in LICENSE.TXT
+
+This library is automatically registered (see CoreLib.cs). Programs don't need to register it manually.
 */
 
 using System;
@@ -374,6 +376,8 @@ namespace Pebble {
 			}
 
 			classDef.FinalizeClass(engine.defaultContext);
+
+			UnitTests.testFuncDelegates.Add("CoreList", RunTests);
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {

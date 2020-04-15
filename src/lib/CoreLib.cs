@@ -409,6 +409,7 @@ namespace Pebble {
 				engine.AddBuiltInFunction(newValue, "ToString");
 			}
 
+			UnitTests.testFuncDelegates.Add("CoreLib", RunTests);
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {

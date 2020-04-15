@@ -7,6 +7,8 @@ but that doesn't give the Pebble programmer much to work with. This way they can
 attempt to recover.
 
 See Copyright Notice in LICENSE.TXT
+
+This library is optional. Its Register function must be called if you want to use it.
 */
 
 using System;
@@ -428,6 +430,8 @@ namespace Pebble {
 
 			classDef.FinalizeClass(engine.defaultContext);
 			lastErrorVar = classDef.staticVars[0];
+
+			UnitTests.testFuncDelegates.Add("FileLib", RunTests);
 		}
 
 		public static bool RunTests(Engine engine, bool verbose) {

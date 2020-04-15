@@ -10,6 +10,10 @@ namespace Pebble {
 
 	public class UnitTests {
 
+		public delegate bool TestFuncDelegate(Engine engine, bool verbose);
+
+		public static Dictionary<string, TestFuncDelegate> testFuncDelegates = new Dictionary<string, TestFuncDelegate>();
+
 		public static void RunTests(Engine engine, bool verbose) {
 			Dictionary<string, object> evaluationTests = new Dictionary<string, object> {
 				// Classes used by a variety of tests.
@@ -1145,16 +1149,17 @@ namespace Pebble {
 				return;
 			}
 			{
+				float startTime = Pb.RealtimeSinceStartup();
+
+				// Runs the tests defined above.
 				RunTests(engine, evaluationTests, compileFailureTests, executionFailTests, verbose);
 
-				CoreLib.RunTests(engine, verbose);
-				MathLib.RunTests(engine, verbose);
-				StringLib.RunTests(engine, verbose);
-				CoreList.RunTests(engine, verbose);
-				CoreDictionary.RunTests(engine, verbose);
-				DateTimeLib.RunTests(engine, verbose);
-				FileLib.RunTests(engine, verbose);
-				StreamLib.RunTests(engine, verbose);
+				// Run test functions provided by registered libraries.
+				foreach(var kvp in testFuncDelegates) {
+					kvp.Value(engine, verbose);
+				}
+
+				engine.Log("\nTests took " + (Pb.RealtimeSinceStartup() - startTime) + " seconds.");
 			}
 			engine.defaultContext.stack.PopScope();
 		}
@@ -1166,8 +1171,6 @@ namespace Pebble {
 			int executionFailTestsFailed = 0;
 
 			engine.Log("*** General: Running tests...");
-
-			float startTime = Pb.RealtimeSinceStartup();
 
 			string msg = "";
 
@@ -1237,13 +1240,11 @@ namespace Pebble {
 
 			// ***
 
-			bool success = 0 == evaluationTestsFailed && 0 == compileFailureTestsFailed && 0 == executionFailTestsFailed;
+			bool success = 0 == evaluationTestsFailed && 0 == compileFailureTestsFailed && 0 == executionFailTestsFailed && 0 == filesFailed;
 			if (success)
-				engine.Log(msg + "\n\nNo errors!");
+				engine.Log(msg + "\nNo errors!");
 			else
 				engine.LogError(msg);
-
-			engine.Log("  Tests took " + (Pb.RealtimeSinceStartup() - startTime) + " seconds.");
 
 			return success;
 		}

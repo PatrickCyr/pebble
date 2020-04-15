@@ -10,6 +10,11 @@ using System.Text.RegularExpressions;
 
 namespace Pebble {
 
+	interface IPebbleLib {
+		void Register(Engine engine);
+		bool RunTests(Engine engine, bool verbose);
+	};
+
 	/*
 	 * Instantiate an instance of this to run Pebble scripts.
 	 */
@@ -24,6 +29,14 @@ namespace Pebble {
 		protected List<ParseErrorInst> _parseErrors = new List<ParseErrorInst>();
 
 		public readonly ExecContext defaultContext;
+
+		/*
+		delegate bool LibraryTestFunc(Engine engine, bool verbose);
+
+		public static void RegisterLibraryTests(LibraryTestFunc testFunc) {
+			testFunc();
+		}
+		*/
 
 		// **************************************************************************
 
