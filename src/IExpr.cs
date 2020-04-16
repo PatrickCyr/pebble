@@ -847,9 +847,17 @@ namespace Pebble {
 					argvals.Add(argVal);
 				}
 
+				// Finally, call the function!
 				result = funcVal.Evaluate(context, argvals, cv);
-				if (context.IsRuntimeErrorSet())
+				if (context.IsRuntimeErrorSet()) {
+					// If this is a host function (written in C#), any RuntimeError set will not have a file and line number.
+					// So, we check here if it is a C# function and apply our own file and line info.
+					if (funcVal is FunctionValue_Host) {
+						// This overrides the current runtime error with one just like it, but with the file and line info of this expression added.
+						SetRuntimeError(context, context.control.runtimeError.type, context.control.runtimeError.msg);
+					}
 					return null;
+				}
 
 				if (0 != (context.control.flags & ControlInfo.RETURN)) {
 					result = context.control.result;
