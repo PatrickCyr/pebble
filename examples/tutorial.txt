@@ -294,24 +294,23 @@ Debug::TimerStart();
 		// Arguments with default arguments cannot be followed by arguments without them.
 		assert(ScriptError::DefaultArgGap) { void BadFunction(num a = 1, num b) { } }
 		
-		// Function *variables* can also be given default arguments.
-		functype<string(bool = true)> btos;
-		string BToS(bool b) {
-			b ? "t" : "f";
-		}
-		btos = BToS;
-		assert("t" == btos());
+		// Arguments in function *types* can be specified as having default argument values by using the ? operator. We are not specifying what that value is here, but merely that when calling this function variable we needn't provide that argument. This implies that the variable can only hold function values which supply a default value for that variable.
+		functype<bool(bool?)> funcVarWithDefaultArgVal;
+
+		bool NoDefaultValue(bool b) { !b; }
+		assert(ScriptError::TypeMismatch) { funcVarWithDefaultArgVal = NoDefaultValue; }
 		
-		// Function variables can even store function values that have different arguments, so long as the "missing" arguments have default values. In this example, BoolToString's first argument's value  is provided by btos's type's default value, and the second is provided by BoolToString's own default value.
-		btos = BoolToString;
-		assert("true" == btos());
+		bool HasDefaultValue(bool b = true) { !b; }
+		funcVarWithDefaultArgVal = HasDefaultValue;
+		assert(false == funcVarWithDefaultArgVal());
 		
-		// Note that since btos's type only has one argument it can only be passed one argument, despite the fact that it's current value is a function which can take up to 2.
-		assert(ScriptError::ArgCountMismatch) { btos(true, true); }
+		// Function variables can even store function values that have different arguments, so long as the "missing" arguments have default values.
+		bool HasDefaultValues(bool b = true, bool b2 = false) { b && !b2; }
+		funcVarWithDefaultArgVal = HasDefaultValues;
+		assert(true == funcVarWithDefaultArgVal());
 		
-		// When both the variable's type and the function literal provide a default value, the literal's takes precedence.
-		functype<string(bool = true, bool = true)> booltostring = BoolToString;
-		assert("true" == booltostring());
+		// Note that since the variable's type only has one argument it can only be passed one argument, despite the fact that it's current value is a function which can take up to 2.
+		assert(ScriptError::ArgCountMismatch) { funcVarWithDefaultArgVal(true, true); }
 	}
 	
 	// * any
@@ -1372,6 +1371,47 @@ Debug::TimerStart();
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////
+// EXEC AND EXECINLINE
+{
+	// There are two Pebble script functions which take scripts as strings and execute them: Exec and ExecInline. Both return a ScriptResult<bool>, where the bool value only indicates success or failure.
+	{
+		// Exec(string script) runs the given Pebble script. ExecInline(string script) does exactly the same thing, but the code inside the script is run "inline", meaning that the script is run in the same scope as the calling code. 
+		
+		num callerLevelVariable = 1;
+		
+		// Exec will not have access to this variable in the calling scope. Note: Just turning off compile errors to prevent the Tutorial output from having an ugly red error in it.
+		Debug::SetLogCompileErrors(false);
+		ScriptResult<bool> nresult = Exec("callerLevelVariable = 2;");
+		Debug::SetLogCompileErrors(true);
+		assert(nresult.error == ScriptError::SymbolNotFound && 1 == callerLevelVariable);
+		
+		// But ExecInline will.
+		nresult = ExecInline("callerLevelVariable = 3;");
+		assert(nresult.IsSuccess() && 3 == callerLevelVariable);
+	}
+	
+	// Importing files.
+	{
+		// Pebble has no built-in way to import files, but it's simple using Exec (or ExecInline) and File library functions, ie:
+	
+		// Exec(File::Load("somefile.txt"));
+		
+		// Note that this is not as feature-rich as other languages. If, for example, a variable or class is declared in the other file, code further down in the file calling Exec will not know what that class is.
+		
+		// For example, this is an error: since Complex isn't defined until this script is RUN, Complex is an undefined symbol when this script is COMPLIED.
+		/* Main.txt:
+			Exec(File::Load("Complex.txt"));
+			Complex c = new;
+		*/
+		
+		// This can be worked around pretty easily by compiling Complex before this script. One solution would be to have a file which loads both in the necessary order.
+		/* Loader.txt:
+			Exec(File::Load("Complex.txt"));
+			Exec(File::Load("Main.txt"));
+		*/
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // BUILT-IN LIBRARIES
