@@ -432,14 +432,15 @@ Debug::TimerStart();
 		assert(3 == 3);
 		assert(3 != 2);
 		
-		// * Arithmetic operators (+, -, *, /, %)
+		// * Arithmetic operators (+, -, *, /, %, **)
 		assert(6 + 4 == 10);
 		assert(6 - 4 == 2);
 		assert(6 * 4 == 24);
 		assert(6 / 4 == 1.5);
 		assert(6 % 4 == 2);		// % is the modulo operator
+		assert(2 ** 8 == 256);	// ** is the power operator. 
 		
-		// * Precedence: *, /, and % group before + and -, and they all group before comparators.
+		// * Precedence: *, /, %, and ** group before + and -, and they all group before comparators.
 		assert(6 * 2 + 1 == 13);
 		assert(6 + 1 * 2 == 8);
 		
@@ -499,6 +500,12 @@ Debug::TimerStart();
 	// * The rest: [], '.', ::, #, $, and <-.
 	{
 		// [] is the index operator, and *only* works on Lists and Dictionaries.
+		List<num> ln = new { Add(10, 11, 12); };
+		assert(11 == ln[1]);
+		// Negative indexes for lists count back from the end of the list.
+		// ie. -1 is the last element, -2 is the 2nd to last element, etc.
+		assert(12 == ln[-1] && 11 == ln[-2] && 10 == ln[-3]);
+		
 		Dictionary<string, num> dsn = new { Add("A", 10).Add("B", 20); };
 		assert(dsn["B"] == 20);
 		

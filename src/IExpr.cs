@@ -613,14 +613,13 @@ namespace Pebble {
 
 				double ix = (double)ixObj;
 				int iix = Convert.ToInt32(ix);
-				if (iix < 0) {
-					SetRuntimeError(context, RuntimeErrorType.ArrayIndexOutOfBounds, "Index (" + iix + ") out of bounds.");
-					return null;
-				} else if (iix >= list.Count) {
+				if (iix < 0)
+					iix = list.Count + iix;
+
+				if (iix < 0 || iix >= list.Count) {
 					SetRuntimeError(context, RuntimeErrorType.ArrayIndexOutOfBounds, "Index (" + iix + ") out of bounds.");
 					return null;
 				}
-
 				return list[iix];
 			}
 
@@ -3094,6 +3093,7 @@ namespace Pebble {
 			MULT,
 			DIV,
 			MOD,
+			POW,
 
 			LT,
 			GT,
@@ -3139,6 +3139,7 @@ namespace Pebble {
 				case OP.MULT:
 				case OP.DIV:
 				case OP.MOD:
+				case OP.POW:
 					if (!ltype.Equals(IntrinsicTypeDefs.NUMBER) || !rtype.Equals(IntrinsicTypeDefs.NUMBER)) {
 						LogCompileErr(context, ParseErrorType.TypeMismatch, _op + " operation requires nums.");
 						error = true;
@@ -3223,6 +3224,9 @@ namespace Pebble {
 					break;
 				case OP.MOD:
 					result = (double)l % (double)r;
+					break;
+				case OP.POW:
+					result = Math.Pow((double)l, (double)r);
 					break;
 
 				case OP.LT:

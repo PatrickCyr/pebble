@@ -301,6 +301,7 @@ MultExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
 	{('*' CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr, expr2); .)
 	 |'/' CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr, expr2); .)
 	 |'%' CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.MOD, expr, expr2); .)
+	 | "**" CastExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.POW, expr, expr2); .)
 	 )}.
 
 CastExpr<ref IExpr expr>   

@@ -347,6 +347,7 @@ namespace Pebble {
 				{"numList[0];", 5},
 				{"numList[0.5];", 5},
 				{"numList[0.50001];", 4},
+				{"4 == numList[-1] && 5 == numList[-2];", true},
 				{"{ List<N> nlist = new List<N>; N n1 = new N; nlist.Add(n1); nlist[0].x; }", 7},
 				{"{ List<N> nlist = new List<N>; for (i = 0, 9) { N n1 = new N; n1.x = i; nlist.Add(n1); }; num sum = 0; for (i = 0, 9) { sum += nlist[i].x; }; sum; }", 45},
 
@@ -701,6 +702,7 @@ namespace Pebble {
 				{"{ List<bool> lb = new List<bool>; lb.Get(0); }", RuntimeErrorType.ArrayIndexOutOfBounds},
 				{"{ List<bool> lb = new List<bool>; lb.Set(-1, true); }", RuntimeErrorType.ArrayIndexOutOfBounds},
 				{"{ List<bool> lb = new List<bool>; lb.RemoveAt(0); }", RuntimeErrorType.ArrayIndexOutOfBounds},
+				{"{ List<bool> lb = new { Add(true, true); }; lb[-3]; }", RuntimeErrorType.ArrayIndexOutOfBounds},
 				// -- modify in foreach
 				{"{ ln.Add(1); foreach(k, v in ln) { ln.Add(666); } }", RuntimeErrorType.ForeachModifyingContainer},
 				{"{ ln.Add(1); foreach(k, v in ln) { ln.RemoveAt(0); } }", RuntimeErrorType.ForeachModifyingContainer},
