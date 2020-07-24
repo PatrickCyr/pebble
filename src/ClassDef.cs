@@ -427,6 +427,7 @@ namespace Pebble {
 				}
 
 				constructor.Evaluate(context);
+				if (context.IsRuntimeErrorSet()) return null;
 			}
 
 			if (scopePushed)

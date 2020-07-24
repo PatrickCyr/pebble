@@ -35,7 +35,12 @@ namespace Pebble {
 			}
 		}
 
+		virtual public bool RegisterTypes(ExecContext context, ref bool error) {
+			return true;
+		}
+		
 		abstract public ITypeDef TypeCheck(ExecContext context, ref bool error);
+		
 		abstract public object Evaluate(ExecContext context);
 
 		abstract public string MyToString(string indent);
@@ -918,6 +923,15 @@ namespace Pebble {
 			nodes = new List<IExpr>();
 		}
 
+		public override bool RegisterTypes(ExecContext context, ref bool error) {
+			for (int ii = 0; ii < nodes.Count; ++ii) {
+				if (!nodes[ii].RegisterTypes(context, ref error))
+					return false;
+			}
+
+			return true;
+		}
+
 		override public ITypeDef TypeCheck(ExecContext context, ref bool error) {
 			ITypeDef lastExprType = null;
 			if (createScope) {
@@ -1309,6 +1323,13 @@ namespace Pebble {
 				msg += "\n" + indent + "ELSE\n" + indent + "  " + falseCase.MyToString(indent + "  ");
 			//msg += "\n" + indent + "ENDIF";
 			return msg;
+		}
+
+		public override bool RegisterTypes(ExecContext context, ref bool error) {
+			bool success = trueCase.RegisterTypes(context, ref error);
+			if (success && null != falseCase)
+				success = falseCase.RegisterTypes(context, ref error);
+			return success;
 		}
 
 		override public ITypeDef TypeCheck(ExecContext context, ref bool error) {
@@ -1921,45 +1942,42 @@ namespace Pebble {
 		// Registers the class & type with the context.
 		// PreRegistering classes allows us to utilize the class type within the class, ie. class Node { Node next; }
 		// Not 100% sure this needs to be it's own step anymore since parser no longer needs to know types to parse Decls.
-		public void Register(ExecContext context) {
-		}
-
-		private void _Register(ExecContext context) {
+		public override bool RegisterTypes(ExecContext context, ref bool error) {
 			if (Pb.reservedWords.Contains(_symbol)) {
 				LogCompileErr(context, ParseErrorType.InvalidSymbolName, "Class name (" + _symbol + ") is a reserved word.");
-				_preregError = true;
-				return;
+				error = true;
+				return false;
 			}
 
 			if (null != context.GetClass(_symbol)) {
 				LogCompileErr(context, ParseErrorType.ClassAlreadyDeclared, "Class (" + _symbol + ") already exists.");
-				_preregError = true;
-				return;
+				error = true;
+				return false;
 			}
 
 			// Can't check for null type. When alias preregisters it registers the name with a null type.
 			if (context.DoesTypeExist(_symbol)) {
 				LogCompileErr(context, ParseErrorType.TypeAlreadyExists, "Class name (" + _symbol + ") collides with an existing type name.");
-				_preregError = true;
-				return;
+				error = true;
+				return false;
 			}
 
 			if (null != parent) {
 				_parentScope = context.GetClass(parent);
 				if (null == _parentScope) {
 					LogCompileErr(context, ParseErrorType.SymbolNotFound, "Class " + _symbol + "'s parent " + parent + " not found.");
-					_preregError = true;
-					return;
+					error = true;
+					return false;
 				}
 				if (_parentScope.isSealed) {
 					LogCompileErr(context, ParseErrorType.ClassParentSealed, "Class " + _symbol + "'s parent " + parent + " is sealed.");
-					_preregError = true;
-					return;
+					error = true;
+					return false;
 				}
 				if (_parentScope.IsGeneric()) {
 					LogCompileErr(context, ParseErrorType.ClassCannotBeChildOfTemplate, "Cannot derive from a generic parent.");
-					_preregError = true;
-					return;
+					error = true;
+					return false;
 				}
 			}
 
@@ -1971,23 +1989,19 @@ namespace Pebble {
 			_classDef = context.CreateClass(_symbol, classType, _parentScope, null, isSealed, isUninstantiable);
 			if (null == _classDef) {
 				LogCompileErr(context, ParseErrorType.Any, "Internal Error: failed to create class (" + _symbol + ").");
-				_preregError = true;
+				error = true;
 			}
-		}
 
-		// This should be called by the parser when the class is done parsing.
-		// Technically, all that really matters is that it happens before the main TypeCheck phase.
-		// We want a class to have it's members declared before TypeCheck so that preceeding code can
-		// still look up the class' members. It helps a lot with circular dependencies.
-		// Note that there is a lot of tricky code here which delays the TypeChecking of the member's
-		// VALUES until the official TypeCheck phase.
-		public void RegisterMembers(ExecContext context) {
+			return true;
 		}
 
 		private void _RegisterMembers(ExecContext context) {
 			// Some parser errors can result in this being called without PreRegister being called first,
 			// hence the classDef check.
-			if (_preregError || null == _classDef)
+			if (null == _classDef)
+				_preregError = true;
+
+			if (_preregError)
 				return;
 
 			_classDef.Initialize();
@@ -2114,7 +2128,6 @@ namespace Pebble {
 
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
 
-			_Register(context);
 			_RegisterMembers(context);
 
 			if (_preregError || error) {
@@ -2381,6 +2394,8 @@ namespace Pebble {
 		public override object Evaluate(ExecContext context) {
 			Pb.Assert(0 == context.control.flags);
 			ClassValue _newInstance = parentSetTypeDef.GetDefaultValue(context) as ClassValue;
+			if (context.IsRuntimeErrorSet())
+				return null;
 
 			if (null != _initializer) {
 				if (!context.stack.PushDefstructorScope(_newInstance, context)) {
@@ -3557,6 +3572,22 @@ namespace Pebble {
 			return "ASSERT(" + _expectedValue.MyToString(indent) + (null != _message ? ", " + _message.MyToString(indent) : "") + ")";
 		}
 
+		public override bool RegisterTypes(ExecContext context, ref bool error) {
+			if (null != _block) {
+				bool sav = context.engine.logCompileErrors;
+				context.engine.logCompileErrors = false;
+				bool retval = _block.RegisterTypes(context, ref error);
+				context.engine.logCompileErrors = sav;
+
+				if (error) {
+					_pei = context.engine.GetParseErrorAndClear();
+					error = false;
+				}
+			}
+
+			return true;
+		}
+
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
 			if (!error) {
 
@@ -3572,7 +3603,7 @@ namespace Pebble {
 					}
 				}
 
-				if (null != _block) {
+				if (!error && null != _block && null == _pei) {
 					bool sav = context.engine.logCompileErrors;
 					context.engine.logCompileErrors = false;
 					_block.TypeCheck(context, ref error);

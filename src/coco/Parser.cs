@@ -342,7 +342,7 @@ const int // types
 				}
 			}
 			Expect(11);
-			StatementBlock(ref body);
+			EmbeddedStatementBlock(ref body);
 			expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); 
 		} else SynErr(77);
 	}
@@ -408,17 +408,17 @@ const int // types
 		AssignExpr(ref expr);
 	}
 
-	void StatementBlock(ref IExpr exprBlock) {
+	void EmbeddedStatementBlock(ref IExpr exprBlock) {
 		Expr_ExprList block = new Expr_ExprList(this);
 		exprBlock = block;
 		IExpr expr = null; 
 		
-		Expect(64);
+		Expect(62);
 		while (StartOf(3)) {
-			Stat(ref expr);
+			EmbeddedStat(ref expr);
 			if (null != expr) block.nodes.Add(expr); expr = null; 
 		}
-		Expect(65);
+		Expect(64);
 	}
 
 	void CondExpr(ref IExpr expr) {
@@ -655,7 +655,7 @@ const int // types
 			expr = new Expr_This(this); 
 		} else if (la.kind == 50) {
 			Get();
-			StatementBlock(ref exprBlock);
+			EmbeddedStatementBlock(ref exprBlock);
 			expr = new Expr_Catch(this, exprBlock); 
 		} else if (StartOf(10)) {
 			Literal(ref expr);
@@ -668,8 +668,8 @@ const int // types
 			if (la.kind == 1) {
 				TypeSpecifierNoFunc(ref valType);
 			}
-			if (la.kind == 64) {
-				StatementBlock(ref initializer);
+			if (la.kind == 62) {
+				EmbeddedStatementBlock(ref initializer);
 			}
 			expr = new Expr_New(this, valType, initializer); 
 		} else SynErr(79);
@@ -700,15 +700,15 @@ const int // types
 			Expr(ref stepExpr);
 		}
 		Expect(11);
-		EmbeddedStat(ref body);
+		ForOrIfStat(ref body);
 		expr = new Expr_For(this, sym, minExpr, maxExpr, stepExpr, body); 
 	}
 
-	void EmbeddedStat(ref IExpr expr) {
+	void ForOrIfStat(ref IExpr expr) {
 		Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; 
 		switch (la.kind) {
-		case 64: {
-			StatementBlock(ref expr);
+		case 62: {
+			EmbeddedStatementBlock(ref expr);
 			break;
 		}
 		case 1: case 2: case 3: case 10: case 33: case 34: case 40: case 41: case 42: case 43: case 44: case 48: case 49: case 50: case 51: case 52: case 53: case 54: {
@@ -716,14 +716,14 @@ const int // types
 			Expect(18);
 			break;
 		}
-		case 59: {
+		case 67: {
 			Get();
 			Expect(10);
 			Expr(ref cond);
 			Expect(11);
 			EmbeddedStat(ref trueCase);
 			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
-			if (la.kind == 60) {
+			if (la.kind == 68) {
 				Get();
 				EmbeddedStat(ref falseCase);
 				ifExpr.falseCase = falseCase; 
@@ -738,19 +738,19 @@ const int // types
 			ForEachExpr(ref expr);
 			break;
 		}
-		case 61: {
+		case 69: {
 			Get();
 			Expect(18);
 			expr = new Expr_Break(this); 
 			break;
 		}
-		case 62: {
+		case 70: {
 			Get();
 			Expect(18);
 			expr = new Expr_Continue(this); 
 			break;
 		}
-		case 63: {
+		case 71: {
 			Get();
 			if (StartOf(9)) {
 				Expr(ref cond);
@@ -777,7 +777,7 @@ const int // types
 		Expect(57);
 		Expr(ref sym);
 		Expect(11);
-		EmbeddedStat(ref body);
+		ForOrIfStat(ref body);
 		Expr_ForEach forEachExpr = new Expr_ForEach(this, sym, kIdent, vIdent, body); expr = forEachExpr; 
 	}
 
@@ -790,31 +790,135 @@ const int // types
 		Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; taExpr.PreRegister(context); 
 	}
 
+	void Class(ref IExpr expr) {
+		Expr_Class scope = null; bool isSealed = false; bool isUninstantiable = false; IExpr memberDec = null; IExpr block = null; 
+		while (la.kind == 59 || la.kind == 60) {
+			if (la.kind == 59) {
+				Get();
+				isSealed = true; 
+			} else {
+				Get();
+				isUninstantiable = true; 
+			}
+		}
+		Expect(61);
+		Expect(1);
+		scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; 
+		if (la.kind == 25) {
+			Get();
+			Expect(1);
+			scope.parent = t.val; 
+		}
+		if (la.kind == 62) {
+			Get();
+			while (StartOf(11)) {
+				if (StartOf(12)) {
+					Decl(ref memberDec);
+					scope.AddMember((Expr_Set) memberDec); 
+				} else {
+					Get();
+					EmbeddedStatementBlock(ref block);
+					scope.SetConstructor(context, block); 
+				}
+			}
+			Expect(64);
+		}
+		Expect(18);
+	}
+
+	void Enum(ref IExpr expr) {
+		IExpr initializer = null; Expr_Enum e = null; ITypeRef enumType = null; string exprName; string valName = null;
+		Expect(65);
+		Expect(4);
+		TypeSpecifier(ref enumType);
+		Expect(6);
+		Expect(1);
+		exprName = t.val; e = new Expr_Enum(this, exprName, enumType); expr = e; 
+		Expect(62);
+		if (la.kind == 1) {
+			Ident(ref valName);
+			if (la.kind == 12) {
+				Get();
+				Expr(ref initializer);
+			}
+			e.AddValue(valName, initializer); initializer = null; 
+			while (NotFinalComma()) {
+				Expect(5);
+				Ident(ref valName);
+				if (la.kind == 12) {
+					Get();
+					Expr(ref initializer);
+				}
+				e.AddValue(valName, initializer); initializer = null; 
+			}
+		}
+		if (la.kind == 5) {
+			Get();
+		}
+		Expect(64);
+	}
+
+	void Assert(ref IExpr expr) {
+		IExpr conditionExpr = null; IExpr messageExpr = null; IExpr block = null; 
+		Expect(66);
+		Expect(10);
+		Expr(ref conditionExpr);
+		while (la.kind == 5) {
+			Get();
+			Expr(ref messageExpr);
+		}
+		Expect(11);
+		if (la.kind == 62) {
+			StatBlock(ref block);
+		} else if (la.kind == 18) {
+			Get();
+		} else SynErr(81);
+		#if PEBBLE_ASSERTOFF
+			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
+		#else
+			expr = new Expr_Assert(this, conditionExpr, messageExpr, block, true);
+		#endif
+		
+	}
+
+	void StatBlock(ref IExpr exprBlock) {
+		Expr_ExprList block = new Expr_ExprList(this);
+		exprBlock = block;
+		IExpr expr = null; 
+		
+		Expect(62);
+		while (StartOf(13)) {
+			Stat(ref expr);
+			if (null != expr) block.nodes.Add(expr); expr = null; 
+		}
+		Expect(64);
+	}
+
 	void Stat(ref IExpr expr) {
 		Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; 
 		switch (la.kind) {
-		case 64: {
-			StatementBlock(ref expr);
+		case 62: {
+			StatBlock(ref expr);
 			break;
 		}
-		case 66: case 67: case 68: {
+		case 59: case 60: case 61: {
 			Class(ref expr);
 			break;
 		}
-		case 70: {
+		case 65: {
 			Enum(ref expr);
 			break;
 		}
-		case 59: {
+		case 67: {
 			Get();
 			Expect(10);
 			Expr(ref cond);
 			Expect(11);
-			EmbeddedStat(ref trueCase);
+			ForOrIfStat(ref trueCase);
 			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
-			if (la.kind == 60) {
+			if (la.kind == 68) {
 				Get();
-				EmbeddedStat(ref falseCase);
+				ForOrIfStat(ref falseCase);
 				ifExpr.falseCase = falseCase; 
 			}
 			break;
@@ -827,28 +931,7 @@ const int // types
 			ForEachExpr(ref expr);
 			break;
 		}
-		case 61: {
-			Get();
-			Expect(18);
-			expr = new Expr_Break(this); 
-			break;
-		}
-		case 62: {
-			Get();
-			Expect(18);
-			expr = new Expr_Continue(this); 
-			break;
-		}
-		case 63: {
-			Get();
-			if (StartOf(9)) {
-				Expr(ref cond);
-			}
-			Expect(18);
-			expr = new Expr_Return(this, cond); 
-			break;
-		}
-		case 71: {
+		case 66: {
 			Assert(ref expr);
 			break;
 		}
@@ -870,106 +953,84 @@ const int // types
 			Get();
 			break;
 		}
-		default: SynErr(81); break;
+		default: SynErr(82); break;
 		}
 	}
 
-	void Class(ref IExpr expr) {
-		Expr_Class scope = null; bool isSealed = false; bool isUninstantiable = false; IExpr memberDec = null; IExpr block = null; 
-		while (la.kind == 66 || la.kind == 67) {
-			if (la.kind == 66) {
-				Get();
-				isSealed = true; 
+	void EmbeddedStat(ref IExpr expr) {
+		Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; 
+		switch (la.kind) {
+		case 62: {
+			EmbeddedStatementBlock(ref expr);
+			break;
+		}
+		case 1: case 2: case 3: case 8: case 9: case 10: case 13: case 14: case 15: case 16: case 33: case 34: case 40: case 41: case 42: case 43: case 44: case 48: case 49: case 50: case 51: case 52: case 53: case 54: {
+			if (IsDecl()) {
+				Decl(ref expr);
 			} else {
+				Expr(ref expr);
+				Expect(18);
+			}
+			break;
+		}
+		case 67: {
+			Get();
+			Expect(10);
+			Expr(ref cond);
+			Expect(11);
+			ForOrIfStat(ref trueCase);
+			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
+			if (la.kind == 68) {
 				Get();
-				isUninstantiable = true; 
+				ForOrIfStat(ref falseCase);
+				ifExpr.falseCase = falseCase; 
 			}
+			break;
 		}
-		Expect(68);
-		Expect(1);
-		scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; 
-		if (la.kind == 25) {
-			Get();
-			Expect(1);
-			scope.parent = t.val; 
+		case 55: {
+			ForExpr(ref expr);
+			break;
 		}
-		scope.Register(context); 
-		if (la.kind == 64) {
+		case 56: {
+			ForEachExpr(ref expr);
+			break;
+		}
+		case 66: {
+			Assert(ref expr);
+			break;
+		}
+		case 69: {
 			Get();
-			while (StartOf(11)) {
-				if (StartOf(12)) {
-					Decl(ref memberDec);
-					scope.AddMember((Expr_Set) memberDec); 
-				} else {
-					Get();
-					StatementBlock(ref block);
-					scope.SetConstructor(context, block); 
-				}
+			Expect(18);
+			expr = new Expr_Break(this); 
+			break;
+		}
+		case 70: {
+			Get();
+			Expect(18);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 71: {
+			Get();
+			if (StartOf(9)) {
+				Expr(ref cond);
 			}
-			Expect(65);
+			Expect(18);
+			expr = new Expr_Return(this, cond); 
+			break;
 		}
-		Expect(18);
-		scope.RegisterMembers(context); 
-	}
-
-	void Enum(ref IExpr expr) {
-		IExpr initializer = null; Expr_Enum e = null; ITypeRef enumType = null; string exprName; string valName = null;
-		Expect(70);
-		Expect(4);
-		TypeSpecifier(ref enumType);
-		Expect(6);
-		Expect(1);
-		exprName = t.val; e = new Expr_Enum(this, exprName, enumType); expr = e; 
-		Expect(64);
-		if (la.kind == 1) {
-			Ident(ref valName);
-			if (la.kind == 12) {
-				Get();
-				Expr(ref initializer);
-			}
-			e.AddValue(valName, initializer); initializer = null; 
-			while (NotFinalComma()) {
-				Expect(5);
-				Ident(ref valName);
-				if (la.kind == 12) {
-					Get();
-					Expr(ref initializer);
-				}
-				e.AddValue(valName, initializer); initializer = null; 
-			}
-		}
-		if (la.kind == 5) {
+		case 18: {
 			Get();
+			break;
 		}
-		Expect(65);
-	}
-
-	void Assert(ref IExpr expr) {
-		IExpr conditionExpr = null; IExpr messageExpr = null; IExpr block = null; 
-		Expect(71);
-		Expect(10);
-		Expr(ref conditionExpr);
-		while (la.kind == 5) {
-			Get();
-			Expr(ref messageExpr);
+		default: SynErr(83); break;
 		}
-		Expect(11);
-		if (la.kind == 64) {
-			StatementBlock(ref block);
-		} else if (la.kind == 18) {
-			Get();
-		} else SynErr(82);
-		#if PEBBLE_ASSERTOFF
-			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
-		#else
-			expr = new Expr_Assert(this, conditionExpr, messageExpr, block, true);
-		#endif
-		
 	}
 
 	void Pebble() {
 		Expr_ExprList list = null; IExpr _nextExpr = null; 
-		while (StartOf(3)) {
+		while (StartOf(13)) {
 			Stat(ref _nextExpr);
 			if (null != _nextExpr) {
 			if (null == _headExpr)
@@ -1008,7 +1069,7 @@ const int // types
 		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _T,_x,_T,_T, _x,_T,_T,_T, _T,_x,_T,_T, _T,_x,_T,_T, _x,_x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_T,_x, _x,_x,_T,_T, _x,_T,_T,_T, _x,_x},
 		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
@@ -1016,8 +1077,9 @@ const int // types
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x}
+		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _T,_x,_T,_T, _T,_T,_T,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x}
 
 		// *** initialization end *********************************************
 	};
@@ -1092,19 +1154,19 @@ public class Errors {
 			case 56: s = "\"foreach\" expected"; break;
 			case 57: s = "\"in\" expected"; break;
 			case 58: s = "\"typealias\" expected"; break;
-			case 59: s = "\"if\" expected"; break;
-			case 60: s = "\"else\" expected"; break;
-			case 61: s = "\"break\" expected"; break;
-			case 62: s = "\"continue\" expected"; break;
-			case 63: s = "\"return\" expected"; break;
-			case 64: s = "\"{\" expected"; break;
-			case 65: s = "\"}\" expected"; break;
-			case 66: s = "\"sealed\" expected"; break;
-			case 67: s = "\"uninstantiable\" expected"; break;
-			case 68: s = "\"class\" expected"; break;
-			case 69: s = "\"constructor\" expected"; break;
-			case 70: s = "\"enum\" expected"; break;
-			case 71: s = "\"assert\" expected"; break;
+			case 59: s = "\"sealed\" expected"; break;
+			case 60: s = "\"uninstantiable\" expected"; break;
+			case 61: s = "\"class\" expected"; break;
+			case 62: s = "\"{\" expected"; break;
+			case 63: s = "\"constructor\" expected"; break;
+			case 64: s = "\"}\" expected"; break;
+			case 65: s = "\"enum\" expected"; break;
+			case 66: s = "\"assert\" expected"; break;
+			case 67: s = "\"if\" expected"; break;
+			case 68: s = "\"else\" expected"; break;
+			case 69: s = "\"break\" expected"; break;
+			case 70: s = "\"continue\" expected"; break;
+			case 71: s = "\"return\" expected"; break;
 			case 72: s = "??? expected"; break;
 			case 73: s = "invalid TypeSpecifier"; break;
 			case 74: s = "invalid FunctionType"; break;
@@ -1113,9 +1175,10 @@ public class Errors {
 			case 77: s = "invalid Decl"; break;
 			case 78: s = "invalid UnaryPost"; break;
 			case 79: s = "invalid Primary"; break;
-			case 80: s = "invalid EmbeddedStat"; break;
-			case 81: s = "invalid Stat"; break;
-			case 82: s = "invalid Assert"; break;
+			case 80: s = "invalid ForOrIfStat"; break;
+			case 81: s = "invalid Assert"; break;
+			case 82: s = "invalid Stat"; break;
+			case 83: s = "invalid EmbeddedStat"; break;
 
 			// *** errors end *************************************************
 			default: s = "error " + n; break;

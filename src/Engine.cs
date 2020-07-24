@@ -199,6 +199,17 @@ namespace Pebble {
 				}
 			}
 
+			// This is the first pass through the tree. It is where class expressions can add themselves to the type library. 
+			// Because it happens earlier than TypeCheck, it allows for code higher in a file than the class declaration to 
+			// use the class. 
+			// Note that it is a VERY incomplete pass because the only Expr that calls this function on it's child Exprs is Expr_List.
+			// This is because class declarations can ONLY by at the top level, or within Expr_Lists at the top level.
+			// For example, there's no need for Expr_If to call RegisterType on it's true/false blocks because those (currently) 
+			// can never contain Expr_Class'es.
+			if (!error)
+				expr.RegisterTypes(defaultContext, ref error);
+
+			// This is the second pass through the tree. It does virtually all the work.
 			if (!error)
 				expr.TypeCheck(defaultContext, ref error);
 

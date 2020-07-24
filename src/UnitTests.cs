@@ -409,6 +409,13 @@ namespace Pebble {
 
 
 				// *** Classes
+				// -- can only be declared at the top level, within blocks under the top level, or in assert blocks.
+				{"class TopLevel;", null}, // can't really test the value of this, sadly.
+				{"{ class InBlock; true; }", true},
+				{"{ assert( ScriptError::SymbolNotFound ) { class InAssert; oeuoeuaoeu; } true; }", true},
+				// -- classes can reference (but not inherit from) classes further down in the file
+				{"{ class FirstDeclared { SecondDeclared ref; void SetRef(SecondDeclared s) { ref = s; } }; class SecondDeclared; true; }", true},
+
 				// -- make sure that initializers are inherited. 
 				// To test this properly, both classes must be declared in the same script.
 				{"{ class InitA { num x = 5; }; class InitB : InitA { }; InitB initB = new; initB.x; }", 5},
@@ -865,15 +872,33 @@ namespace Pebble {
 				{"{ functype<num(A)> aFunc; num BFunc(B b) { 1; } aFunc = BFunc; }", ParseErrorType.TypeMismatch},
 
 				// Return
-				{"return true;", ParseErrorType.ReturnNotInCall},
+				{"return true;", ParseErrorType.SyntaxError},
+				{"{ return true; }", ParseErrorType.SyntaxError},
+				{"{ if (true) return true; }", ParseErrorType.ReturnNotInCall},
+				{"{ for (i = 1, 1) return true; }", ParseErrorType.ReturnNotInCall},
 				{"{ num poop() { return true; }; }", ParseErrorType.ReturnTypeMismatch},
 				{"{ num poop() { string poopy() { return 0; }; }; }", ParseErrorType.ReturnTypeMismatch},
 				{"class RetTest { return null; };", ParseErrorType.SyntaxError},
 				{"void poop() { return true; };", ParseErrorType.ReturnValueInVoidFunction},
 				{"num poop() { return; };", ParseErrorType.ReturnNullInNonVoidFunction},
-					
+
 
 				// Class
+				// -- many invalid places to attempt to declare classes
+				{"{ if (true) class InIf; }", ParseErrorType.SyntaxError}, 
+				{"{ if (true) { class InIfBlock; } }", ParseErrorType.SyntaxError},
+				{"{ if (true) { { class InIfBlockBlock; } } }", ParseErrorType.SyntaxError},
+				{"{ for (i=1,1) class InFor; }", ParseErrorType.SyntaxError}, 
+				{"{ for (i=1,1) { class InForBlock; } }", ParseErrorType.SyntaxError},
+				{"{ for (i=1,1) { { class InForBlockBlock; } } }", ParseErrorType.SyntaxError},
+				{"{ new A { class InsideDefstructor; }; }", ParseErrorType.SyntaxError},
+				{"{ new A { { class InsideDefstructorBlock; } }; }", ParseErrorType.SyntaxError},
+				{"{ void ClassContainingFunc() { class InFuncBody; } }", ParseErrorType.SyntaxError},
+				{"{ void ClassContainingFunc() { { class InFuncBodyBlock; } } }", ParseErrorType.SyntaxError},
+				{"class NestedInConstructor { constructor { class ImInAConstructor; } };", ParseErrorType.SyntaxError},
+				{"catch { class InCatch; }", ParseErrorType.SyntaxError},
+				// - classes can reference (though not inherit from) classes that are declared below them
+				{"{ class First : Second; class Second; }", ParseErrorType.SymbolNotFound},
 				// - derived class member shadowing
 				{@"class OY : N { num x = 5; };", ParseErrorType.SymbolAlreadyDeclared},
 				// - argument b shadows inherited property b.
@@ -998,9 +1023,9 @@ namespace Pebble {
 
 				// If
 				// -- allocation body (not embeddable statement)
-				{"{ if (true) bool b = true; }", ParseErrorType.SyntaxError},
+				{"{ if (true) bool allocInTrueCase = true; }", ParseErrorType.SyntaxError},
 				// -- class definition body
-				{"{ if (true) class Nooo {}; }", ParseErrorType.SyntaxError},
+				{"{ if (true) class Nooo; }", ParseErrorType.SyntaxError},
 				// -- allocation in if condition
 				{"{ if(bool bbbbb = true) { }; }", ParseErrorType.SyntaxError},
 				// -- condition not boolean
@@ -1064,8 +1089,8 @@ namespace Pebble {
 				{"{ foreach (a, b in n) {} }", ParseErrorType.ForEachInvalidCollection},
 
 				// Break & continue
-				{"break;", ParseErrorType.BreakNotInFor},
-				{"continue;", ParseErrorType.ContinueNotInFor},
+				{"break;", ParseErrorType.SyntaxError},
+				{"continue;", ParseErrorType.SyntaxError},
 				{"if (true) { break; }", ParseErrorType.BreakNotInFor},
 				{"if (true) { continue; }", ParseErrorType.ContinueNotInFor},
 				{"if (true) break;", ParseErrorType.BreakNotInFor},
@@ -1228,7 +1253,7 @@ namespace Pebble {
 					foreach (string testFile in testFiles) {
 						string testFileData = File.ReadAllText(testFile);
 
-						object result = engine.RunScript(testFileData, ref errors, false);
+						object result = engine.RunScript(testFileData, ref errors, false, testFile);
 						if (!(result is bool) || true != (bool)result) {
 							engine.LogError("  ^ " + testFile + " failed with " + errors.Count + " errors.");
 							++filesFailed;

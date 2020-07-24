@@ -482,17 +482,17 @@ public class Scanner {
 			case "foreach": t.kind = 56; break;
 			case "in": t.kind = 57; break;
 			case "typealias": t.kind = 58; break;
-			case "if": t.kind = 59; break;
-			case "else": t.kind = 60; break;
-			case "break": t.kind = 61; break;
-			case "continue": t.kind = 62; break;
-			case "return": t.kind = 63; break;
-			case "sealed": t.kind = 66; break;
-			case "uninstantiable": t.kind = 67; break;
-			case "class": t.kind = 68; break;
-			case "constructor": t.kind = 69; break;
-			case "enum": t.kind = 70; break;
-			case "assert": t.kind = 71; break;
+			case "sealed": t.kind = 59; break;
+			case "uninstantiable": t.kind = 60; break;
+			case "class": t.kind = 61; break;
+			case "constructor": t.kind = 63; break;
+			case "enum": t.kind = 65; break;
+			case "assert": t.kind = 66; break;
+			case "if": t.kind = 67; break;
+			case "else": t.kind = 68; break;
+			case "break": t.kind = 69; break;
+			case "continue": t.kind = 70; break;
+			case "return": t.kind = 71; break;
 			default: break;
 		}
 	}
@@ -657,9 +657,9 @@ public class Scanner {
 			case 49:
 				{t.kind = 48; break;}
 			case 50:
-				{t.kind = 64; break;}
+				{t.kind = 62; break;}
 			case 51:
-				{t.kind = 65; break;}
+				{t.kind = 64; break;}
 			case 52:
 				recEnd = pos; recKind = 47;
 				if (ch >= '0' && ch <= '9') {AddCh(); goto case 2;}

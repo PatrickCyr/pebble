@@ -237,7 +237,7 @@ Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; IExpr i
 			{ ',' FunctionDeclArg<ref argTypes, ref argNames, ref defaultValues> }
 		]
 		')' 
-		StatementBlock<ref body>						(. expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); .) 
+		EmbeddedStatementBlock<ref body>				(. expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); .) 
 	).	
 
 
@@ -349,11 +349,11 @@ Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = n
 	| "::" ident											(. expr = new Expr_Scope(this, null, t.val); .)
 	| ident													(. expr = new Expr_Symbol(this, t.val); .)
 	| "this"												(. expr = new Expr_This(this); .)
-	| "catch" StatementBlock<ref exprBlock> 				(. expr = new Expr_Catch(this, exprBlock); .)
+	| "catch" EmbeddedStatementBlock<ref exprBlock> 		(. expr = new Expr_Catch(this, exprBlock); .)
 	//| Test<ref expr>
 	| Literal<ref expr>
 	| '(' Expr<ref expr> ')'
-	| "new" [TypeSpecifierNoFunc<ref valType>] [ StatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, initializer); .)
+	| "new" [TypeSpecifierNoFunc<ref valType>] [ EmbeddedStatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, initializer); .)
 	).
 
 Literal<ref IExpr expr>
@@ -379,66 +379,15 @@ ArgExprList<ref ExprList args>		(. args = new ExprList(); IExpr arg1 = null, arg
 
 ForExpr<ref IExpr expr>			(. string sym = null; IExpr minExpr = null; IExpr maxExpr = null; IExpr body = null; IExpr stepExpr = null; .)
 =	"for" '(' Ident<ref sym> '=' Expr<ref minExpr> ',' Expr<ref maxExpr> [ ',' Expr<ref stepExpr> ]	')' 
-		EmbeddedStat<ref body>							(. expr = new Expr_For(this, sym, minExpr, maxExpr, stepExpr, body); .) .
+		ForOrIfStat<ref body>							(. expr = new Expr_For(this, sym, minExpr, maxExpr, stepExpr, body); .) .
 
 
 ForEachExpr<ref IExpr expr>		(. string kIdent = null, vIdent = null; IExpr sym = null, body = null; .)
 =	"foreach" '(' Ident<ref kIdent> ',' Ident<ref vIdent> "in" Expr<ref sym> ')' 
-		EmbeddedStat<ref body>							(. Expr_ForEach forEachExpr = new Expr_ForEach(this, sym, kIdent, vIdent, body); expr = forEachExpr; .) .
+		ForOrIfStat<ref body>							(. Expr_ForEach forEachExpr = new Expr_ForEach(this, sym, kIdent, vIdent, body); expr = forEachExpr; .) .
 
 TypeAliasStat<ref IExpr expr>	(. ITypeRef typeRef = null; string ident = null; .)
 =	"typealias" Ident<ref ident> '=' TypeSpecifier<ref typeRef>	(. Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; taExpr.PreRegister(context); .) .
-
-
-//--------------------------------
-//---------- Statements ----------
-//--------------------------------
-
-Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
-=	StatementBlock<ref expr>
-	| Class<ref expr>
-	| Enum<ref expr>
-	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
-		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ]
-	| ForExpr<ref expr>
-	| ForEachExpr<ref expr>
-	| "break" ';'												(. expr = new Expr_Break(this); .)
-	| "continue" ';'											(. expr = new Expr_Continue(this); .)
-	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
-	| Assert<ref expr>
-	| TypeAliasStat<ref expr> ';'
-	| (IF(IsDecl()) Decl<ref expr> | Expr<ref expr> ';' )
-	| ';'
-	.
-
-// A series of Statements.  Has value: the value of the final Statement.
-// What is it's value if it has no Statements, though?!
-StatementBlock<ref IExpr exprBlock>
-=						(.	Expr_ExprList block = new Expr_ExprList(this);
-							exprBlock = block;
-							IExpr expr = null; 
-						.)
-	'{'	{
-		Stat<ref expr>	(. if (null != expr) block.nodes.Add(expr); expr = null; .) 
-	} '}'.
-
-
-// This is the type of statement that could be, for example, the body of a for or if statement.
-// Re: LL1 warning in EmbeddedStat: "else" is start and successor of deletable structure
-//   This warning is because in this expression "if (b) if (c) else d;" it is ambiguous which if the else belongs to. 
-//   It doesn't matter: whichever Coco chooses, it should be consistent, and besides anyone who codes like this is playing with fire anyway.
-EmbeddedStat<ref IExpr expr>									(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
-=	( StatementBlock<ref expr>
-	| Expr<ref expr> ';'
-	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
-		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ] 
-	| ForExpr<ref expr>
-	| ForEachExpr<ref expr>
-	| "break" ';'												(. expr = new Expr_Break(this); .)
-	| "continue" ';'											(. expr = new Expr_Continue(this); .)
-	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
-	| ';'
-	).
 
 
 Class<ref IExpr expr>							(. Expr_Class scope = null; bool isSealed = false; bool isUninstantiable = false; IExpr memberDec = null; IExpr block = null; .)
@@ -447,12 +396,11 @@ Class<ref IExpr expr>							(. Expr_Class scope = null; bool isSealed = false; b
 	}
 	"class" ident								(. scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; .)
 		[ ':' ident								(. scope.parent = t.val; .) ]
-												(. scope.Register(context); .)
 		[ '{' { 
 			Decl<ref memberDec>							(. scope.AddMember((Expr_Set) memberDec); .) 
-			| "constructor" StatementBlock<ref block>	(. scope.SetConstructor(context, block); .)
+			| "constructor" EmbeddedStatementBlock<ref block>	(. scope.SetConstructor(context, block); .)
 		} '}' ]
-	';'											(. scope.RegisterMembers(context); .).
+	';' .
 
 
 Enum<ref IExpr expr>							(. IExpr initializer = null; Expr_Enum e = null; ITypeRef enumType = null; string exprName; string valName = null;.)
@@ -464,8 +412,9 @@ Enum<ref IExpr expr>							(. IExpr initializer = null; Expr_Enum e = null; ITyp
 		} ] [","]
 	"}" .
 
+// Note that the assert block is a StatBlock, not EmbeddedStatementBlock. This is so we can have assert unit tests with class declarations in them.
 Assert<ref IExpr expr>		(. IExpr conditionExpr = null; IExpr messageExpr = null; IExpr block = null; .)
-= "assert" '(' Expr<ref conditionExpr> {',' Expr<ref messageExpr> } ')' ( StatementBlock<ref block> | ';' )
+=	"assert" '(' Expr<ref conditionExpr> {',' Expr<ref messageExpr> } ')' ( StatBlock<ref block> | ';' )
 	(. 
 #if PEBBLE_ASSERTOFF
 		expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
@@ -473,6 +422,81 @@ Assert<ref IExpr expr>		(. IExpr conditionExpr = null; IExpr messageExpr = null;
 		expr = new Expr_Assert(this, conditionExpr, messageExpr, block, true);
 #endif
 	.) .
+
+//--------------------------------
+//---------- Statements ----------
+//--------------------------------
+
+// This is the very top level. Can be most things, namely class declarations, though not control expressions.
+Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
+=	StatBlock<ref expr>
+	| Class<ref expr>
+	| Enum<ref expr>
+	| "if" '(' Expr<ref cond> ')' ForOrIfStat<ref trueCase>		(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
+		["else" ForOrIfStat<ref falseCase> 						(. ifExpr.falseCase = falseCase; .) ]
+	| ForExpr<ref expr>
+	| ForEachExpr<ref expr>
+	| Assert<ref expr>
+	| TypeAliasStat<ref expr> ';'
+	| (IF(IsDecl()) Decl<ref expr> | Expr<ref expr> ';' )
+	| ';'
+	.
+
+// A block of stats. This is only used for blocks just below the top level.
+//! What is it's value if it has no Statements, though?!
+StatBlock<ref IExpr exprBlock>
+=						(.	Expr_ExprList block = new Expr_ExprList(this);
+							exprBlock = block;
+							IExpr expr = null; 
+						.)
+	'{'	{
+		Stat<ref expr>	(. if (null != expr) block.nodes.Add(expr); expr = null; .) 
+	} '}'.
+
+// This is the type of statement that could be, for example, the body of a for or if statement.
+// Re: LL1 warning in EmbeddedStat: "else" is start and successor of deletable structure
+//   This warning is because in this expression "if (b) if (c) else d;" it is ambiguous which if the else belongs to. 
+//   It doesn't matter: whichever Coco chooses, it should be consistent, and besides anyone who codes like this is playing with fire anyway.
+EmbeddedStat<ref IExpr expr>									(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
+=	( EmbeddedStatementBlock<ref expr>
+	| (IF(IsDecl()) Decl<ref expr> | Expr<ref expr> ';' )
+	| "if" '(' Expr<ref cond> ')' ForOrIfStat<ref trueCase>		(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
+		["else" ForOrIfStat<ref falseCase> 						(. ifExpr.falseCase = falseCase; .) ] 
+	| ForExpr<ref expr>
+	| ForEachExpr<ref expr>
+	| Assert<ref expr>
+	| "break" ';'												(. expr = new Expr_Break(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
+	| ';'
+	).
+
+// A series of EMBEDDED Statements.  Has value: the value of the final Statement.
+// What is it's value if it has no Statements, though?!
+EmbeddedStatementBlock<ref IExpr exprBlock>
+=						(.	Expr_ExprList block = new Expr_ExprList(this);
+							exprBlock = block;
+							IExpr expr = null; 
+						.)
+	'{'	{
+		EmbeddedStat<ref expr>	(. if (null != expr) block.nodes.Add(expr); expr = null; .) 
+	} '}'.
+
+/* This is used ONLY for the statements immediately following If or For statements. Those statements can be anything that could be inside
+a If or For BLOCK, EXCEPT declarations and asserts.
+*/
+ForOrIfStat<ref IExpr expr>										(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
+=	( EmbeddedStatementBlock<ref expr>
+	| Expr<ref expr> ';'
+	| "if" '(' Expr<ref cond> ')' EmbeddedStat<ref trueCase>	(. ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; .)
+		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ] 
+	| ForExpr<ref expr>
+	| ForEachExpr<ref expr>
+	| "break" ';'												(. expr = new Expr_Break(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
+	| ';'
+	).
 
 //----------------------------
 //---------- Script ----------
