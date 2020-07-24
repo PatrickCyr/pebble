@@ -872,8 +872,8 @@ namespace Pebble {
 				{"{ functype<num(A)> aFunc; num BFunc(B b) { 1; } aFunc = BFunc; }", ParseErrorType.TypeMismatch},
 
 				// Return
-				{"return true;", ParseErrorType.SyntaxError},
-				{"{ return true; }", ParseErrorType.SyntaxError},
+				{"return true;", ParseErrorType.ReturnNotInCall},
+				{"{ return true; }", ParseErrorType.ReturnNotInCall},
 				{"{ if (true) return true; }", ParseErrorType.ReturnNotInCall},
 				{"{ for (i = 1, 1) return true; }", ParseErrorType.ReturnNotInCall},
 				{"{ num poop() { return true; }; }", ParseErrorType.ReturnTypeMismatch},
@@ -1089,8 +1089,8 @@ namespace Pebble {
 				{"{ foreach (a, b in n) {} }", ParseErrorType.ForEachInvalidCollection},
 
 				// Break & continue
-				{"break;", ParseErrorType.SyntaxError},
-				{"continue;", ParseErrorType.SyntaxError},
+				{"break;", ParseErrorType.BreakNotInFor},
+				{"continue;", ParseErrorType.ContinueNotInFor},
 				{"if (true) { break; }", ParseErrorType.BreakNotInFor},
 				{"if (true) { continue; }", ParseErrorType.ContinueNotInFor},
 				{"if (true) break;", ParseErrorType.BreakNotInFor},

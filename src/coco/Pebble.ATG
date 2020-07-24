@@ -427,7 +427,8 @@ Assert<ref IExpr expr>		(. IExpr conditionExpr = null; IExpr messageExpr = null;
 //---------- Statements ----------
 //--------------------------------
 
-// This is the very top level. Can be most things, namely class declarations, though not control expressions.
+// This is the very top level. Can be most things, namely class declarations, though not control expressions. Actually, we're allowing control expressions so that we can put them in
+// assert blocks.
 Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; .)
 =	StatBlock<ref expr>
 	| Class<ref expr>
@@ -437,6 +438,9 @@ Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExp
 	| ForExpr<ref expr>
 	| ForEachExpr<ref expr>
 	| Assert<ref expr>
+	| "break" ';'												(. expr = new Expr_Break(this); .)
+	| "continue" ';'											(. expr = new Expr_Continue(this); .)
+	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)
 	| TypeAliasStat<ref expr> ';'
 	| (IF(IsDecl()) Decl<ref expr> | Expr<ref expr> ';' )
 	| ';'
