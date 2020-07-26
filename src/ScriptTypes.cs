@@ -35,6 +35,9 @@ namespace Pebble {
 				return _typeRegistry[name] as TypeDef;
 
 			TypeDef newDef = new TypeDef(type, defaultValue, isConst);
+#if PEBBLE_TRACETYPES
+			Console.WriteLine("Registering new type: " + name);
+#endif
 			_typeRegistry.Add(name, newDef);
 			return newDef;
 		}
@@ -67,6 +70,9 @@ namespace Pebble {
 				return _typeRegistry[name] as TypeDef_Function;
 
 			TypeDef_Function newDef = new TypeDef_Function(retType, argTypes, minArgs, _varargs, classType, isConst, isStatic);
+#if PEBBLE_TRACETYPES
+			Console.WriteLine("Registering new function type: " + name);
+#endif
 			_typeRegistry.Add(name, newDef);
 			return newDef;
 		}
@@ -89,6 +95,9 @@ namespace Pebble {
 			if (_typeRegistry.ContainsKey(name))
 				return _typeRegistry[name] as TypeDef_Class;
 			TypeDef_Class newDef = new TypeDef_Class(className, genericTypes, isConst);
+#if PEBBLE_TRACETYPES
+			Console.WriteLine("Registering new class type: " + name);
+#endif
 			_typeRegistry.Add(name, newDef);
 			return newDef;
 		}

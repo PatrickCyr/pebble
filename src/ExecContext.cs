@@ -9,24 +9,36 @@ using System.Collections.Generic;
 namespace Pebble {
 
 	/**
-	 * Responsible for name scoping. Is a collection of SymbolTables.
+	 * Holds all the variable parts of the engine: globals, the stack, registered types and classes, and control flags.
+	 * The idea was that the same engine could have multiple contexts and run scripts on them independently, though
+	 * I've never found any reason to do that.
+	 * TODO: Should it hold TypeFactory as well? Probably.
 	 */
 	public class ExecContext {
+
+		// Used to save state while compiling so we can undo any changes that may happen if there's an error.
+		// Note that the TypeLibrary is not reverted. I spent some time trying to come up with a scenario
+		// where that would become a problem but I came up empty. Not positive there isn't a way to do it, just 
+		// don't know what it could be.
+		private class PreCompileState {
+			public StackState stackState;
+		};
+		private PreCompileState _preCompileState;
 
 		public readonly Engine engine;
 
 		// This contains globals & the stack. 
-		// Currently there is no heap: we utilize C#'s memory manager for our heap. (At least I think, lawl.)
+		// Currently there is no heap: we utilize C#'s memory manager for our heap.
 		public VariableStack stack = new VariableStack();
 
 		// This is where "type variables" are saved.  They work much like regular variables,
 		// but are syntatically specified very differently, so we need to store them separately.
 		// User defined types (classes) are stored here as well.
-		private Dictionary<string, ITypeDef> _types = new Dictionary<string, ITypeDef>();
+		private BufferedDictionary<string, ITypeDef> _types = new BufferedDictionary<string, ITypeDef>();
 
 		// This is where we store the user-defined classes. Note that the class's *type* will
 		// also be in _types.
-		private Dictionary<string, ClassDef> _classes = new Dictionary<string, ClassDef>();
+		private BufferedDictionary<string, ClassDef> _classes = new BufferedDictionary<string, ClassDef>();
 
 		// This holds information about control elements, like continue, break, and return.
 		public ControlInfo control = new ControlInfo();
@@ -56,6 +68,36 @@ namespace Pebble {
 				return null;
 
 			return control.runtimeError.ToString();
+		}
+
+		public void BeginCompile() {
+			Pb.Assert(null == _preCompileState);
+			_preCompileState = new PreCompileState();
+			_preCompileState.stackState = stack.GetState();
+			_types.Apply();
+			_classes.Apply();
+		}
+
+		public void FinishCompile(bool revert) {
+			stack.RestoreState(_preCompileState.stackState);
+			if (revert) {
+#if PEBBLE_TRACETYPES
+				engine.Log("Reverting " + _types.BufferedCount() + " types.");
+				engine.Log("Reverting " + _classes.BufferedCount() + " classes.");
+#endif
+				_types.Revert();
+				_classes.Revert();
+			} else {
+#if PEBBLE_TRACETYPES
+				engine.Log("Applying " + _types.BufferedCount() + " types.");
+				engine.Log("Applying " + _classes.BufferedCount() + " classes.");
+#endif
+				_types.Apply();
+				_classes.Apply();
+			}
+			control.Clear();
+
+			_preCompileState = null;
 		}
 
 		// Used by the parser.
@@ -106,16 +148,14 @@ namespace Pebble {
 
 			if (classes) {
 				output += "\nClasses:\n";
-				foreach (var x in _classes) {
+				foreach (var x in _classes.GetMainForDebugging())
 					output += "  " + x.Key + "\n";
-				}
 			}
 
 			if (types) {
 				output += "\nTypes:\n";
-				foreach (var x in _types) {
+				foreach (var x in _types.GetMainForDebugging())
 					output += "  " + x.Key + "\n";
-				}
 			}
 
 			if (registry) {
@@ -210,12 +250,6 @@ namespace Pebble {
 			return true;
 		}
 
-		public void ClearAlias(string alias) {
-			if (_types.ContainsKey(alias)) {
-				_types.Remove(alias);
-			}
-		}
-
 		// When creating a new class, call CreateClass XOR RegisterClass. Use the latter if you already have a ClassDef, otherwise
 		// call the former and it will create one for you.
 		public ClassDef CreateClass(string nameIn, TypeDef_Class typeDef, ClassDef par, List<string> genericTypeNames = null, bool isSealed = false, bool isUninstantiable = false) {
@@ -229,14 +263,6 @@ namespace Pebble {
 			Pb.Assert(!_classes.ContainsKey(def.name), "ExecContext::AddClass - Class already exists!");
 			_classes.Add(def.name, def);
 			_types.Add(def.name, TypeFactory.GetTypeDef_Class(def.name, null, false));
-		}
-
-		// THE ONLY VALID USE OF THIS IS TO REMOVE A CLASS THAT FAILED TO COMPILE.
-		// Types and Variables that have correctly compiled MUST live forever. You cannot remove them without 
-		// potentially invalidating compiled code.
-		public void RemoveClass(string name) {
-			_classes.Remove(name);
-			_types.Remove(name);
 		}
 
 		// Register a template type, creating the ClassDef if necessary.

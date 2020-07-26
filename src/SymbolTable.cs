@@ -36,56 +36,6 @@ namespace Pebble {
 		}
 	}
 
-	// A container I made which is a list with a name-index dictionary, too, for both
-	// fast integer and string lookups.
-	public class DictionaryList<V> {
-		private List<V> _list = new List<V>();
-		private Dictionary<string, int> _nameToIx = new Dictionary<string, int>();
-
-		public int Count {
-			get { return _list.Count; }
-		}
-
-		public bool Exists(string name) {
-			return null != Get(name);
-		}
-
-		public V Get(int index) {
-			return _list[index];
-		}
-
-		public V Get(string name) {
-			if (_nameToIx.ContainsKey(name))
-				return _list[_nameToIx[name]];
-			return default(V);
-		}
-
-		public int GetIndex(string name) {
-			if (_nameToIx.ContainsKey(name))
-				return _nameToIx[name];
-			return -1;
-		}
-
-		public int Set(string symbol, V value) {
-			int ix;
-			if (_nameToIx.ContainsKey(symbol)) {
-				ix = _nameToIx[symbol];
-				_list[ix] = value;
-			} else {
-				ix = Add(symbol, value);
-			}
-
-			return ix;
-		}
-
-		public int Add(string symbol, V value) {
-			int ix = _list.Count;
-			_nameToIx.Add(symbol, ix);
-			_list.Add(value);
-			return ix;
-		}
-	}
-
 	// This holds information about each scope pushed onto the scope stack.
 	// Scopes are caused by function calls and by expression lists.
 	/* Types of scopes:

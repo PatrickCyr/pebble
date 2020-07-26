@@ -1421,6 +1421,47 @@ Debug::TimerStart();
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// ORDER OF DEFINITION
+{
+	// (Almost) everything in Pebble is only known to the code below it.
+	{
+		// This includes variables...
+		assert(ScriptError::SymbolNotFound) { someVar; }
+		bool someVar;
+
+		// ...typealiases...
+		assert(ScriptError::TypeNotFound) { SomeAlias aa; }
+		typealias SomeAlias = num;
+
+		// ...and enums.
+		assert(ScriptError::TypeNotFound) { SomeEnum en; }
+		assert(ScriptError::ClassNotDeclared) { SomeEnum::B; }
+		enum<num> SomeEnum { A, B, C };
+	}
+	
+	// The one exception are classes, which are available anywhere.
+	{
+		SomeClass aa = new SomeClass;
+
+		// Though their parents must be declared below.
+		assert(ScriptError::TypeNotFound) { class SomeClassChild : SomeClass; }
+
+		// Note, though, that class *members* are only available below the class definition.
+		assert(ScriptError::ClassMemberNotFound) { aa.n; }
+
+		class SomeClass {
+			num n = 1;
+			constructor {
+				n = 2;
+			}
+		};
+
+		// This is OK because since we are below A's definition we can reference its fields.
+		assert(2 == aa.n);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
 // BUILT-IN LIBRARIES
 // The documentation for all libraries is in /doc/LibDocs.txt
 

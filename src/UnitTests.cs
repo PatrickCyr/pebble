@@ -898,7 +898,7 @@ namespace Pebble {
 				{"class NestedInConstructor { constructor { class ImInAConstructor; } };", ParseErrorType.SyntaxError},
 				{"catch { class InCatch; }", ParseErrorType.SyntaxError},
 				// - classes can reference (though not inherit from) classes that are declared below them
-				{"{ class First : Second; class Second; }", ParseErrorType.SymbolNotFound},
+				{"{ class First : Second; class Second; }", ParseErrorType.TypeNotFound},
 				// - derived class member shadowing
 				{@"class OY : N { num x = 5; };", ParseErrorType.SymbolAlreadyDeclared},
 				// - argument b shadows inherited property b.
@@ -917,14 +917,14 @@ namespace Pebble {
 				{"class DictionaryChild : Dictionary;", ParseErrorType.ClassCannotBeChildOfTemplate},
 				{"class ResultChild : Result;", ParseErrorType.ClassCannotBeChildOfTemplate},
 				{"class ListNumChild : List<num>;", ParseErrorType.SyntaxError}, // ParseErrorType.ClassCannotBeChildOfTemplate},
-				{"class NumChild : num;", ParseErrorType.SymbolNotFound},
+				{"class NumChild : num;", ParseErrorType.TypeNotFound},
 				// -- sealed
 				{"{ sealed class SealedClass; class ChildOfSealed : SealedClass; }", ParseErrorType.ClassParentSealed},
 				// -- uninstantiable
 				{"{ uninstantiable class Uclass; new Uclass; }", ParseErrorType.ClassUninstantiable},
 				// -- Make sure we can't name a class after an existing type.
 				{"class num {  };", ParseErrorType.TypeAlreadyExists},
-				{"{ typealias alias = O; class alias {}; }", ParseErrorType.TypeAlreadyExists},
+				{"{ typealias alias = O; class alias {}; }", ParseErrorType.SymbolAlreadyDeclared},
 				// -- multiple constructors
 				{"class MultCons{ constructor {} constructor {} };", ParseErrorType.ClassCanOnlyHaveOneConstructor},
 				// -- Error evaluating static initializer.
@@ -1169,6 +1169,14 @@ namespace Pebble {
 				{"ScriptError se = new;", ParseErrorType.ClassUninstantiable},
 				// -- cannot be parent
 				{"class EnumChild : ScriptError {};", ParseErrorType.ClassParentSealed},
+
+				// Insure that types are not saved if there is a parse error.
+				// - class
+				{"{ class DeletedBecauseCompileError; 3 + true; }", ParseErrorType.TypeMismatch},
+				{"DeletedBecauseCompileError dbce;", ParseErrorType.TypeNotFound},
+				// - typealias
+				{"{ typealias DeletedAlias = num; 3 + true; }", ParseErrorType.TypeMismatch},
+				{"DeletedAlias deletedAlias;", ParseErrorType.TypeNotFound},
 			};
 
 			if (!engine.defaultContext.stack.PushTerminalScope("<test scope>", null)) {

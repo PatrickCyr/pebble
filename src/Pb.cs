@@ -226,4 +226,126 @@ namespace Pebble {
 			return null != msg ? msg : type.ToString();
 		}
 	}
+
+	// This container holds new entries in a temp buffer until Apply is called to finalize them
+	// or Revert is called to toss them. This is used to clean up registered types and stuff
+	// in the event of a compilation error.
+	public class BufferedDictionary<K, V> {
+		private Dictionary<K, V> _main = new Dictionary<K, V>();
+		private Dictionary<K, V> _temp = new Dictionary<K, V>();
+
+		// Making this class enumerable is far too complicated when all I want 
+		// is this list to print during debugging. Using it for anything else is 
+		// naughty.
+		public Dictionary<K, V> GetMainForDebugging() {
+			return _main;
+		}
+
+		public void Apply() {
+			foreach (var kvp in _temp) {
+				_main.Add(kvp.Key, kvp.Value);
+			}
+			_temp.Clear();
+		}
+
+		public bool HasBuffered() {
+			return _temp.Count > 0;
+		}
+
+		public int BufferedCount() {
+			return _temp.Count;
+		}
+
+		public void Revert() {
+			_temp.Clear();
+		}
+
+		public bool ContainsKey(K key) {
+			return _main.ContainsKey(key) || _temp.ContainsKey(key);
+		}
+
+		public BufferedDictionary<K, V> Add(K key, V value) {
+			if (ContainsKey(key))
+				return null;
+			_temp.Add(key, value);
+			return this;
+		}
+
+		public V Get(K key) {
+			if (_main.ContainsKey(key))
+				return _main[key];
+			return _temp[key];
+		}
+
+		public void Set(K key, V value) {
+			if (_main.ContainsKey(key))
+				_main[key] = value;
+			else
+				_temp[key] = value;
+		}
+
+		public V this[K key] {
+			get => Get(key);
+			set => Set(key, value);
+		}
+	}
+
+	// A container I made which is a list with a name-index dictionary, too, for both
+	// fast integer and string lookups.
+	public class DictionaryList<V> {
+		private List<V> _list = new List<V>();
+		private Dictionary<string, int> _nameToIx = new Dictionary<string, int>();
+
+		public int Count {
+			get { return _list.Count; }
+		}
+
+		public bool Exists(string name) {
+			return null != Get(name);
+		}
+
+		public V Get(int index) {
+			return _list[index];
+		}
+
+		public V Get(string name) {
+			if (_nameToIx.ContainsKey(name))
+				return _list[_nameToIx[name]];
+			return default(V);
+		}
+
+		public bool ContainsKey(string key) {
+			return _nameToIx.ContainsKey(key);
+		}
+
+		public V this[string key] {
+			get => Get(key);
+			set => Set(key, value);
+		}
+
+		public int GetIndex(string name) {
+			if (_nameToIx.ContainsKey(name))
+				return _nameToIx[name];
+			return -1;
+		}
+
+		public int Set(string symbol, V value) {
+			int ix;
+			if (_nameToIx.ContainsKey(symbol)) {
+				ix = _nameToIx[symbol];
+				_list[ix] = value;
+			} else {
+				ix = Add(symbol, value);
+			}
+
+			return ix;
+		}
+
+		public int Add(string symbol, V value) {
+			int ix = _list.Count;
+			_nameToIx.Add(symbol, ix);
+			_list.Add(value);
+			return ix;
+		}
+	}
 }

@@ -34,7 +34,13 @@ Pebble does not have it's own memory manager. All memory management is taken car
 
 # Initialization order
 
-In Pebble, types and variables are only in scope to code AFTER their declaration. This means there can never be circular dependencies. Static class variables are initialized when the code executes the class declaration. While this can make certain things a bit more difficult, it was deliberate decision to do it this way. First, it's very easy to understand when things are in scope, and when they get initialized. Second, the compiler doesn't have to do a bunch of time-consuming work to handle potential circular dependencies.
+In Pebble, types and variables are only in scope to code AFTER their declaration, with the limited exception of classes. Classes can be referenced above their declaration, but their fields cannot. Initially I wanted to not make this exception for classes, but I kept running into situations where it was just too handy.
+
+Note that typealiases and enums are not like classes. With typealiases there is a trade off:
+- Declare the alias during the RegisterTypes pass and the whole script can access the alias, BUT the aliased type MUST already be declared during RegisterTypes, which means that classes that are declared below could not be aliased.
+- Declare the alias during the TypeCheck pass (like it is now) and only script below can use the alias, but the alias can be to a class declared anywhere.
+
+enums have the particular problem that they are generics, so if we were to try to register the enum during RegisterTypes the generic type would have to be available during RegisterTypes. It's certainly doable but there would be a tradeoff, and so I'm going to leave it alone until when/if it ever becomes an issue.
 
 
 # Error handling in native functions

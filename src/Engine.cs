@@ -189,7 +189,7 @@ namespace Pebble {
 				return null;
 			}
 
-			StackState state = defaultContext.stack.GetState();
+			defaultContext.BeginCompile();
 
 			bool error = false;
 			if (createTempScope) {
@@ -217,8 +217,7 @@ namespace Pebble {
 				Log(expr.MyToString(""));
 
 			// Restore state always. Parsing should never permanently affect the stack.
-			defaultContext.stack.RestoreState(state);
-			defaultContext.control.Clear();
+			defaultContext.FinishCompile(error);
 
 			if (error) {
 				_parseErrors = null;

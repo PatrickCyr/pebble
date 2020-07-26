@@ -1941,7 +1941,6 @@ namespace Pebble {
 
 		// Registers the class & type with the context.
 		// PreRegistering classes allows us to utilize the class type within the class, ie. class Node { Node next; }
-		// Not 100% sure this needs to be it's own step anymore since parser no longer needs to know types to parse Decls.
 		public override bool RegisterTypes(ExecContext context, ref bool error) {
 			if (Pb.reservedWords.Contains(_symbol)) {
 				LogCompileErr(context, ParseErrorType.InvalidSymbolName, "Class name (" + _symbol + ") is a reserved word.");
@@ -1965,7 +1964,7 @@ namespace Pebble {
 			if (null != parent) {
 				_parentScope = context.GetClass(parent);
 				if (null == _parentScope) {
-					LogCompileErr(context, ParseErrorType.SymbolNotFound, "Class " + _symbol + "'s parent " + parent + " not found.");
+					LogCompileErr(context, ParseErrorType.TypeNotFound, "Class " + _symbol + "'s parent " + parent + " not found.");
 					error = true;
 					return false;
 				}
@@ -2935,29 +2934,10 @@ namespace Pebble {
 	public class Expr_TypeAlias : IExpr {
 		protected string _name;
 		protected ITypeRef _typeRef;
-		protected bool _preregError = false;
 
 		public Expr_TypeAlias(Parser parser, string sym, ITypeRef typeRef) : base(parser) {
 			_name = sym;
 			_typeRef = typeRef;
-		}
-
-		public void PreRegister(ExecContext context) {
-			// Make sure name isn't taken.
-			if (context.DoesTypeExist(_name)) {
-				LogCompileErr(context, ParseErrorType.SymbolAlreadyDeclared, "Cannot create alias '" + _name + "' because a type already exists with that name.");
-				_preregError = true;
-				return;
-			}
-			if (!context.stack.IsSymbolAvailable(context, _name)) {
-				LogCompileErr(context, ParseErrorType.SymbolAlreadyDeclared, "Cannot create alias '" + _name + "' because a variable exists with that name.");
-				_preregError = true;
-				return;
-			}
-
-			// If no errors, actually create the alias so that it is 
-			// available to code further down.
-			context.CreateAlias(_name, null);
 		}
 
 		public override string ToString() {
@@ -2968,22 +2948,41 @@ namespace Pebble {
 			return "TYPE_ALIAS(" + _name + " = " + _typeRef.ToString() + ")";
 		}
 
+		/* Note: We don't implement the RegisterTypes pass on this deliberately.
+		 * - If we register during RegisterTypes, the entire script will have access to the alias, 
+		 *		BUT the type that is being aliased has to be known (declared above in the script).
+		 * - If we register during TypeCheck (as we do now), then only the script below has access to the alias, 
+		 *		BUT the type that is being referenced can be something that is registered later (such as a class).
+		 *		
+		 *	The latter is more intuitive, I think, so going with that.
+		 */
+
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
-			if (_preregError)
+			if (error) 
 				return null;
 
-			if (error) {
-				context.ClearAlias(_name);
+			// Make sure name isn't taken.
+			if (context.DoesTypeExist(_name)) {
+				LogCompileErr(context, ParseErrorType.SymbolAlreadyDeclared, "Cannot create alias '" + _name + "' because a type already exists with that name.");
+				error = true;
+				return null;
+			}
+			if (!context.stack.IsSymbolAvailable(context, _name)) {
+				LogCompileErr(context, ParseErrorType.SymbolAlreadyDeclared, "Cannot create alias '" + _name + "' because a variable exists with that name.");
+				error = true;
 				return null;
 			}
 
 			// Make sure that typedef is valid.
 			ITypeDef typeDef = _typeRef.Resolve(context, ref error);
 			if (null == typeDef) {
-				context.ClearAlias(_name);
+				error = true;
 				return null;
 			}
 
+			// The fact that there are two functions here is a remnant of a time when we used to preregister
+			// this type before the TypeCheck pass. Keeping them in case I change my mind and go back to this.
+			context.CreateAlias(_name, null);
 			context.UpdateAlias(_name, typeDef);
 
 			return SetType(IntrinsicTypeDefs.BOOL);

@@ -387,7 +387,7 @@ ForEachExpr<ref IExpr expr>		(. string kIdent = null, vIdent = null; IExpr sym =
 		ForOrIfStat<ref body>							(. Expr_ForEach forEachExpr = new Expr_ForEach(this, sym, kIdent, vIdent, body); expr = forEachExpr; .) .
 
 TypeAliasStat<ref IExpr expr>	(. ITypeRef typeRef = null; string ident = null; .)
-=	"typealias" Ident<ref ident> '=' TypeSpecifier<ref typeRef>	(. Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; taExpr.PreRegister(context); .) .
+=	"typealias" Ident<ref ident> '=' TypeSpecifier<ref typeRef>	(. Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; .) .
 
 
 Class<ref IExpr expr>							(. Expr_Class scope = null; bool isSealed = false; bool isUninstantiable = false; IExpr memberDec = null; IExpr block = null; .)

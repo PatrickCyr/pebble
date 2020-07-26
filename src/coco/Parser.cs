@@ -787,7 +787,7 @@ const int // types
 		Ident(ref ident);
 		Expect(12);
 		TypeSpecifier(ref typeRef);
-		Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; taExpr.PreRegister(context); 
+		Expr_TypeAlias taExpr = new Expr_TypeAlias(this, ident, typeRef); expr = taExpr; 
 	}
 
 	void Class(ref IExpr expr) {
