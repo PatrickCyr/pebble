@@ -110,7 +110,7 @@ namespace Pebble {
 		ClassMemberShadowed,
 		ClassNotDeclared,
 		ClassParentSealed,
-		ClassRequiredForThis,
+		ClassRequired,
 		ClassUninstantiable,
 		ConcatStringsOnly,
 		ConditionNotBoolean,
@@ -132,7 +132,6 @@ namespace Pebble {
 		Internal,
 		InvalidSymbolName,
 		IsRequiresClass,
-		IsTypesUnrelated,
 		LengthOperatorInvalidOperand,
 		MemberOverrideCannotBeStatic,
 		MemberOverrideNoParent,
@@ -170,6 +169,7 @@ namespace Pebble {
 		TypeMismatch,
 		TypeNotFound,
 		TypeNotIndexable,
+		TypesUnrelated,
 		VoidFunctionsOnly,
 	}
 

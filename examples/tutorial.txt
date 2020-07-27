@@ -995,6 +995,46 @@ Debug::TimerStart();
 		uninstantiable class UninstantiableClass;
 		assert(ScriptError::ClassUninstantiable) { new UninstantiableClass; }
 	}
+	
+	// * is and as
+	{
+		// Consider a small class heirarchy.
+		class Planet;
+			class RockyPlanet : Planet;
+			class GasGiantPlanet : Planet;
+	
+		Planet earth = new RockyPlanet;
+		Planet jupiter = new GasGiantPlanet;
+		GasGiantPlanet saturn = new GasGiantPlanet;
+		Planet pluto = null;
+	
+		// The "is" operator checks a class reference at runtime vs a class type and returns true if the variable held by that class is of the given type.
+		{
+			assert(earth is RockyPlanet && !(earth is GasGiantPlanet));
+			assert(jupiter is GasGiantPlanet && !(jupiter is RockyPlanet));
+			
+			// null references always return null;
+			assert(!(pluto is RockyPlanet) && !(pluto is GasGiantPlanet));
+			
+			// It is an error to use "is" in such a way that it can never be true.
+			
+			assert(ScriptError::TypesUnrelated) { saturn is RockyPlanet; }
+		}
+		
+		// The "as" operator allows you to reinterpret a parent reference as a child reference.
+		{
+			RockyPlanet rockyEarth = earth as RockyPlanet;
+			GasGiantPlanet gaseousJupiter = jupiter as GasGiantPlanet;
+			
+			// It returns null if it can't do it, or if the input is null.
+			assert(null == earth as GasGiantPlanet && null == pluto as Planet);
+			
+			// Likewise, it's an error to use "as" in such a way that can never work.
+			assert(ScriptError::TypesUnrelated) { saturn as RockyPlanet; }
+		}
+		
+		// NOTE: Currently, the right-hand side of "is" and "as" can ONLY be classes. You cannot use it to determine if something is a generic (like a List) or is a specific functype, for instance.
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1125,7 +1165,7 @@ Debug::TimerStart();
 	// enums are custom datatypes whose only acceptable values are defined by the user at time of creation.
 	// Note: enums, like classes, are always global.
 
-	enum<num> Planet {
+	enum<num> EPlanet {
 		Mercury = 1,
 		Venus,
 		Earth,
@@ -1136,14 +1176,14 @@ Debug::TimerStart();
 		Neptune,
 	};
 
-	Planet planet = Planet::Jupiter;
+	EPlanet planet = EPlanet::Jupiter;
 	
 	// Each enum value has two read-only fields.
 	// 1) The name, which is the same as the symbol.
-	assert("Mars" == Planet::Mars.name);
+	assert("Mars" == EPlanet::Mars.name);
 	
 	// 2) The "value", which is where the user can specify any data they like to be associated with the enum value.
-	assert(3 == Planet::Earth.value);
+	assert(3 == EPlanet::Earth.value);
 	
 	// The default values of enum<num> start at 0 and increment by one each value. The default value of enum<string> is just the name. The default values of enums with any other type is just the default value of that type.
 

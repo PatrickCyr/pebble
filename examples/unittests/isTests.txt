@@ -1,4 +1,4 @@
-// Lots of test of "is"
+// Lots of tests of "is"
 
 class Is;
 	class IsA : Is;
@@ -7,7 +7,14 @@ class Is;
 	class IsB : Is;
 
 
-Is i = new;
+Is i;
+assert(!(i is Is));
+assert(!(i is IsA));
+assert(!(i is IsA1));
+assert(!(i is IsA2));
+assert(!(i is IsB));
+
+i = new;
 assert(i is Is);
 assert(!(i is IsA));
 assert(!(i is IsA1));
@@ -19,20 +26,20 @@ assert(a is Is);
 assert(a is IsA);
 assert(!(a is IsA1));
 assert(!(a is IsA2));
-assert(ScriptError::IsTypesUnrelated) { a is IsB; }
+assert(ScriptError::TypesUnrelated) { a is IsB; }
 
 IsA1 a1 = new;
 assert(a1 is Is);
 assert(a1 is IsA);
 assert(a1 is IsA1);
-assert(ScriptError::IsTypesUnrelated) { a1 is IsA2; }
-assert(ScriptError::IsTypesUnrelated) { a1 is IsB; }
+assert(ScriptError::TypesUnrelated) { a1 is IsA2; }
+assert(ScriptError::TypesUnrelated) { a1 is IsB; }
 
 IsB b = new;
 assert(b is Is);
-assert(ScriptError::IsTypesUnrelated) { b is IsA; }
-assert(ScriptError::IsTypesUnrelated) { b is IsA1; }
-assert(ScriptError::IsTypesUnrelated) { b is IsA2; }
+assert(ScriptError::TypesUnrelated) { b is IsA; }
+assert(ScriptError::TypesUnrelated) { b is IsA1; }
+assert(ScriptError::TypesUnrelated) { b is IsA2; }
 assert(b is IsB);
 
 
@@ -48,4 +55,33 @@ assert(aa1 is Is);
 assert(aa1 is IsA);
 assert(aa1 is IsA1);
 assert(!(aa1 is IsA2));
-assert(ScriptError::IsTypesUnrelated) { aa1 is IsB; }
+assert(ScriptError::TypesUnrelated) { aa1 is IsB; }
+
+// *******************
+// Lots of tests of "as"
+
+Is a1asi = ia1 as Is;
+	assert(a1asi is Is);
+	assert(a1asi is IsA);
+	assert(a1asi is IsA1);
+IsA a1asa = ia1 as IsA;
+	assert(a1asa is Is);
+	assert(a1asa is IsA);
+	assert(a1asa is IsA1);
+IsA1 a1asa1 = ia1 as IsA1;
+	assert(a1asa1 is Is);
+	assert(a1asa1 is IsA);
+	assert(a1asa1 is IsA1);
+IsA2 a1asa2 = ia1 as IsA2;
+	assert(null == a1asa2);
+IsB a1asb = ia1 as IsB;
+	assert(null == a1asb);
+	
+Is basi = b as Is;
+	assert(basi is Is && basi is IsB);
+assert(ScriptError::TypesUnrelated) { b as IsA; }
+assert(ScriptError::TypesUnrelated) { b as IsA1; }
+assert(ScriptError::TypesUnrelated) { b as IsA2; }
+IsB basb = b as IsB;
+	assert(basb == b && basb is IsB && basb is IsB);
+

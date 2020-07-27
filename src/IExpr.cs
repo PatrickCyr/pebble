@@ -3016,7 +3016,7 @@ namespace Pebble {
 			ClassDef classDef = context.stack.GetCurrentClassDef(true);
 			if (null == classDef) {
 				error = true;
-				LogCompileErr(context, ParseErrorType.ClassRequiredForThis, "this keyword must be in class scope.");
+				LogCompileErr(context, ParseErrorType.ClassRequired, "this keyword must be in class scope.");
 				return null;
 			}
 
@@ -3767,7 +3767,7 @@ namespace Pebble {
 			if (context.IsChildClass(_rhsClassDef, _lhsClassDef)) {
 				_automaticallyTrue = true;
 			} else if (!context.IsChildClass(_lhsClassDef, _rhsClassDef)) {
-				LogCompileErr(context, ParseErrorType.IsTypesUnrelated, "is: Left hand expression type is not a parent of right hand type.");
+				LogCompileErr(context, ParseErrorType.TypesUnrelated, "is: Left hand expression type is not a parent of right hand type.");
 				error = true;
 				return null;
 			}
@@ -3788,6 +3788,82 @@ namespace Pebble {
 
 			ClassValue classValue = exprResult as ClassValue;
 			return context.IsChildClass(_rhsClassDef, classValue.classDef);
+		}
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+	// Expr_As
+
+	public class Expr_As : IExpr {
+		private IExpr _expr { get { return nodes[0]; } }
+		private string _symbol;
+
+		private ClassDef _lhsClassDef;
+		private ClassDef _rhsClassDef;
+		private bool _automaticallyTrue = false;
+
+		public Expr_As(Parser parser, IExpr expr, string symbol) : base(parser) {
+			nodes = new List<IExpr>() {
+				expr,
+			};
+			_symbol = symbol;
+		}
+
+		public override string ToString() {
+			return "AS(" + _expr + ": " + _symbol + ")";
+		}
+
+		public override string MyToString(string indent) {
+			return "AS(" + _expr.MyToString(indent) + ": " + _symbol + ")";
+		}
+
+		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
+			ITypeDef exprTypeDef = _expr.TypeCheck(context, ref error);
+			if (error)
+				return null;
+
+			if (!(exprTypeDef is TypeDef_Class)) {
+				LogCompileErr(context, ParseErrorType.ClassRequired, "as: Left hand side of as operator must be an expression of type class.");
+				error = true;
+				return null;
+			}
+			TypeDef_Class exprClassType = exprTypeDef as TypeDef_Class;
+			_lhsClassDef = context.GetClass(exprClassType.className);
+
+			_rhsClassDef = context.GetClass(_symbol);
+			if (null == _rhsClassDef) {
+				LogCompileErr(context, ParseErrorType.ClassNotDeclared, "as: Class not found with name '" + _symbol + "'.");
+				error = true;
+				return null;
+			}
+
+			if (context.IsChildClass(_rhsClassDef, _lhsClassDef)) {
+				_automaticallyTrue = true;
+			} else if (!context.IsChildClass(_lhsClassDef, _rhsClassDef)) {
+				LogCompileErr(context, ParseErrorType.TypesUnrelated, "as: Left hand expression type is not a parent of right hand type.");
+				error = true;
+				return null;
+			}
+
+			return _rhsClassDef.typeDef;
+		}
+
+		public override object Evaluate(ExecContext context) {
+			object exprResult = _expr.Evaluate(context);
+			if (context.IsRuntimeErrorSet())
+				return null;
+
+			if (null == exprResult)
+				return null;
+
+			if (_automaticallyTrue)
+				return exprResult;
+
+			ClassValue classValue = exprResult as ClassValue;
+			if (context.IsChildClass(_rhsClassDef, classValue.classDef))
+				return exprResult;
+
+			return null;
 		}
 	}
 }

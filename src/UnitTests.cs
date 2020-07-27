@@ -935,12 +935,12 @@ namespace Pebble {
 				
 				// this
 				// - Using "this" outside of class scope.
-				{"this;", ParseErrorType.ClassRequiredForThis},
-				{"num ThisFunc() { this; }", ParseErrorType.ClassRequiredForThis},
+				{"this;", ParseErrorType.ClassRequired},
+				{"num ThisFunc() { this; }", ParseErrorType.ClassRequired},
 				// - Using "this" to reference statics
 				{"class BadThis { static num a; num GetA() { this.a; } };", ParseErrorType.ClassMemberNotFound},
-				{"class BadThis2 { static BadThis2 GetThis() { this; } };", ParseErrorType.ClassRequiredForThis},
-				{"class BadThis3 { num n; static num F() { this.n; } };", ParseErrorType.ClassRequiredForThis},
+				{"class BadThis2 { static BadThis2 GetThis() { this; } };", ParseErrorType.ClassRequired},
+				{"class BadThis3 { num n; static num F() { this.n; } };", ParseErrorType.ClassRequired},
 
 				// Polymorphism
 				// assigning value of parent type to child variable

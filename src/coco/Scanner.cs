@@ -296,8 +296,8 @@ public class UTF8Buffer: Buffer {
 public class Scanner {
 	const char EOL = '\n';
 	const int eofSym = 0; /* pdt */
-	const int maxT = 73;
-	const int noSym = 73;
+	const int maxT = 74;
+	const int noSym = 74;
 
 
 	public Buffer buffer; // scanner buffer
@@ -473,27 +473,28 @@ public class Scanner {
 			case "static": t.kind = 15; break;
 			case "override": t.kind = 16; break;
 			case "is": t.kind = 30; break;
-			case "this": t.kind = 50; break;
-			case "catch": t.kind = 51; break;
-			case "new": t.kind = 52; break;
-			case "true": t.kind = 53; break;
-			case "false": t.kind = 54; break;
-			case "null": t.kind = 55; break;
-			case "for": t.kind = 56; break;
-			case "foreach": t.kind = 57; break;
-			case "in": t.kind = 58; break;
-			case "typealias": t.kind = 59; break;
-			case "sealed": t.kind = 60; break;
-			case "uninstantiable": t.kind = 61; break;
-			case "class": t.kind = 62; break;
-			case "constructor": t.kind = 64; break;
-			case "enum": t.kind = 66; break;
-			case "assert": t.kind = 67; break;
-			case "if": t.kind = 68; break;
-			case "else": t.kind = 69; break;
-			case "break": t.kind = 70; break;
-			case "continue": t.kind = 71; break;
-			case "return": t.kind = 72; break;
+			case "as": t.kind = 41; break;
+			case "this": t.kind = 51; break;
+			case "catch": t.kind = 52; break;
+			case "new": t.kind = 53; break;
+			case "true": t.kind = 54; break;
+			case "false": t.kind = 55; break;
+			case "null": t.kind = 56; break;
+			case "for": t.kind = 57; break;
+			case "foreach": t.kind = 58; break;
+			case "in": t.kind = 59; break;
+			case "typealias": t.kind = 60; break;
+			case "sealed": t.kind = 61; break;
+			case "uninstantiable": t.kind = 62; break;
+			case "class": t.kind = 63; break;
+			case "constructor": t.kind = 65; break;
+			case "enum": t.kind = 67; break;
+			case "assert": t.kind = 68; break;
+			case "if": t.kind = 69; break;
+			case "else": t.kind = 70; break;
+			case "break": t.kind = 71; break;
+			case "continue": t.kind = 72; break;
+			case "return": t.kind = 73; break;
 			default: break;
 		}
 	}
@@ -644,28 +645,28 @@ public class Scanner {
 			case 42:
 				{t.kind = 40; break;}
 			case 43:
-				{t.kind = 41; break;}
-			case 44:
 				{t.kind = 42; break;}
-			case 45:
+			case 44:
 				{t.kind = 43; break;}
-			case 46:
+			case 45:
 				{t.kind = 44; break;}
+			case 46:
+				{t.kind = 45; break;}
 			case 47:
-				{t.kind = 46; break;}
-			case 48:
 				{t.kind = 47; break;}
+			case 48:
+				{t.kind = 48; break;}
 			case 49:
-				{t.kind = 49; break;}
+				{t.kind = 50; break;}
 			case 50:
-				{t.kind = 63; break;}
+				{t.kind = 64; break;}
 			case 51:
-				{t.kind = 65; break;}
+				{t.kind = 66; break;}
 			case 52:
-				recEnd = pos; recKind = 48;
+				recEnd = pos; recKind = 49;
 				if (ch >= '0' && ch <= '9') {AddCh(); goto case 2;}
 				else if (ch == '.') {AddCh(); goto case 62;}
-				else {t.kind = 48; break;}
+				else {t.kind = 49; break;}
 			case 53:
 				recEnd = pos; recKind = 4;
 				if (ch == '-') {AddCh(); goto case 23;}
@@ -704,9 +705,9 @@ public class Scanner {
 				if (ch == ':') {AddCh(); goto case 49;}
 				else {t.kind = 25; break;}
 			case 61:
-				recEnd = pos; recKind = 45;
+				recEnd = pos; recKind = 46;
 				if (ch == '=') {AddCh(); goto case 36;}
-				else {t.kind = 45; break;}
+				else {t.kind = 46; break;}
 			case 62:
 				recEnd = pos; recKind = 36;
 				if (ch == '=') {AddCh(); goto case 29;}
