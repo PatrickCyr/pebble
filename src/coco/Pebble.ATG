@@ -273,11 +273,12 @@ LogAndExpr<ref IExpr expr>					(. IExpr expr1 = null, expr2 = null; .)
 =	EqlExpr<ref expr1>						(. expr = expr1; .)
 	{"&&" EqlExpr<ref expr2>				(. expr = new Expr_BinOp(this, Expr_BinOp.OP.AND, expr, expr2); .) }.
 
-EqlExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)
+EqlExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; string sym = null; .)
 =	RelExpr<ref expr1>						(. expr = expr1; .)
 	{("==" RelExpr<ref expr2>				(. expr = new Expr_Compare(this, expr, expr2, false); .)
 	 |"!=" RelExpr<ref expr2>				(. expr = new Expr_Compare(this, expr, expr2, true);  .)
 	 |"<-" RelExpr<ref expr2>				(. expr = new Expr_ScriptToValue(this, expr, expr2);	.)
+	 |"is" Ident<ref sym>					(. expr = new Expr_Is(this, expr1, sym); .) 
 	 )}.
 
 RelExpr<ref IExpr expr>						(. IExpr expr1 = null, expr2 = null; .)

@@ -131,6 +131,8 @@ namespace Pebble {
 		IndexNotNumeric,
 		Internal,
 		InvalidSymbolName,
+		IsRequiresClass,
+		IsTypesUnrelated,
 		LengthOperatorInvalidOperand,
 		MemberOverrideCannotBeStatic,
 		MemberOverrideNoParent,

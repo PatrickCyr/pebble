@@ -1778,8 +1778,8 @@ namespace Pebble {
 
 				--dict.enumeratingCount;
 			} else { // is enum
-				// Note that collection must be evaluated *before* the foreach block is pushed
-				// or the ref looks at the wrong scope.
+					 // Note that collection must be evaluated *before* the foreach block is pushed
+					 // or the ref looks at the wrong scope.
 				if (!context.stack.PushBlock(Pb.FOREACH_BLOCK_NAME, context)) {
 					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "foreach: stack overflow pushing block");
 					return null;
@@ -3715,6 +3715,79 @@ namespace Pebble {
 				SetRuntimeError(context, RuntimeErrorType.Assert, "ASSERT FAILED : " + reason + " " + msg);
 
 			return _result;
+		}
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+	// Expr_Is
+
+	public class Expr_Is : IExpr {
+		private IExpr _expr { get { return nodes[0]; } }
+		private string _symbol;
+
+		private ClassDef _lhsClassDef;
+		private ClassDef _rhsClassDef;
+		private bool _automaticallyTrue = false;
+
+		public Expr_Is(Parser parser, IExpr expr, string symbol) : base(parser) {
+			nodes = new List<IExpr>() {
+				expr,
+			};
+			_symbol = symbol;
+		}
+
+		public override string ToString() {
+			return "IS(" + _expr + ": " + _symbol + ")";
+		}
+
+		public override string MyToString(string indent) {
+			return "IS(" + _expr.MyToString(indent) + ": " + _symbol + ")";
+		}
+
+		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
+			ITypeDef exprTypeDef = _expr.TypeCheck(context, ref error);
+			if (error)
+				return null;
+
+			if (!(exprTypeDef is TypeDef_Class)) {
+				LogCompileErr(context, ParseErrorType.IsRequiresClass, "is: Left hand side of is operator must be an expression of type class.");
+				error = true;
+				return null;
+			}
+			TypeDef_Class exprClassType = exprTypeDef as TypeDef_Class;
+			_lhsClassDef = context.GetClass(exprClassType.className);
+
+			_rhsClassDef = context.GetClass(_symbol);
+			if (null == _rhsClassDef) {
+				LogCompileErr(context, ParseErrorType.ClassNotDeclared, "is: Class not found with name '" + _symbol + "'.");
+				error = true;
+				return null;
+			}
+
+			if (context.IsChildClass(_rhsClassDef, _lhsClassDef)) {
+				_automaticallyTrue = true;
+			} else if (!context.IsChildClass(_lhsClassDef, _rhsClassDef)) {
+				LogCompileErr(context, ParseErrorType.IsTypesUnrelated, "is: Left hand expression type is not a parent of right hand type.");
+				error = true;
+				return null;
+			}
+
+			return IntrinsicTypeDefs.BOOL;
+		}
+
+		public override object Evaluate(ExecContext context) {
+			object exprResult = _expr.Evaluate(context);
+			if (context.IsRuntimeErrorSet())
+				return null;
+
+			if (null == exprResult)
+				return false;
+
+			if (_automaticallyTrue)
+				return true;
+
+			ClassValue classValue = exprResult as ClassValue;
+			return context.IsChildClass(_rhsClassDef, classValue.classDef);
 		}
 	}
 }

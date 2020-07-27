@@ -1,0 +1,51 @@
+// Lots of test of "is"
+
+class Is;
+	class IsA : Is;
+		class IsA1 : IsA;
+		class IsA2 : IsA;
+	class IsB : Is;
+
+
+Is i = new;
+assert(i is Is);
+assert(!(i is IsA));
+assert(!(i is IsA1));
+assert(!(i is IsA2));
+assert(!(i is IsB));
+
+IsA a = new;
+assert(a is Is);
+assert(a is IsA);
+assert(!(a is IsA1));
+assert(!(a is IsA2));
+assert(ScriptError::IsTypesUnrelated) { a is IsB; }
+
+IsA1 a1 = new;
+assert(a1 is Is);
+assert(a1 is IsA);
+assert(a1 is IsA1);
+assert(ScriptError::IsTypesUnrelated) { a1 is IsA2; }
+assert(ScriptError::IsTypesUnrelated) { a1 is IsB; }
+
+IsB b = new;
+assert(b is Is);
+assert(ScriptError::IsTypesUnrelated) { b is IsA; }
+assert(ScriptError::IsTypesUnrelated) { b is IsA1; }
+assert(ScriptError::IsTypesUnrelated) { b is IsA2; }
+assert(b is IsB);
+
+
+Is ia1 = new IsA1;
+assert(ia1 is Is);
+assert(ia1 is IsA);
+assert(ia1 is IsA1);
+assert(!(ia1 is IsA2));
+assert(!(ia1 is IsB));
+
+IsA aa1 = new IsA1;
+assert(aa1 is Is);
+assert(aa1 is IsA);
+assert(aa1 is IsA1);
+assert(!(aa1 is IsA2));
+assert(ScriptError::IsTypesUnrelated) { aa1 is IsB; }
