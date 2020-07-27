@@ -42,6 +42,37 @@ Note that typealiases and enums are not like classes. With typealiases there is 
 
 enums have the particular problem that they are generics, so if we were to try to register the enum during RegisterTypes the generic type would have to be available during RegisterTypes. It's certainly doable but there would be a tradeoff, and so I'm going to leave it alone until when/if it ever becomes an issue.
 
+# is and as
+
+The "is" and "as" expressions only work on simple classes. Notably they don't work on templates and functions. Consider this:
+
+	class I;
+	class A : I;
+	class B : I;
+
+	List<I> l = new List<A>;
+	l.Add(new B);	// Whoops. List<I> can do this but List<A> cannot.
+
+	List<A> l = new List<I> { Add(new B); }; // Whoops, List<A> would contain a B.
+	
+So templates cannot really be polyphorphic. Looking at functions...
+	
+	void FI(I i) {}
+	void FA(A a) {}
+	
+	functype<void(I)> fi = FA; // ERROR: Type system always rejects this.
+	functype<void(A)> fa = FI; // Type system always allows this.
+	
+	if (fa is functype<void(I)>)
+		fi = fa as functype<void(I)>;
+	
+...that *could* be a thing, and since function values contain their type it's possible. I struggle to think of use case, though. It's really weird because you are casting from the specific to the general, which is the opposite of the more typical example:
+
+	List<I> li = new { Add(new A, new B); };
+	if (li[0] is A)
+		A a = li[0] as A;
+		
+Just doesn't seem like anyone will ever have a need for such a feature.
 
 # Error handling in native functions
 

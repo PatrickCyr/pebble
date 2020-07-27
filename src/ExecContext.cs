@@ -70,6 +70,7 @@ namespace Pebble {
 			return control.runtimeError.ToString();
 		}
 
+		// Call at the beginning of compilation to save current state.
 		public void BeginCompile() {
 			Pb.Assert(null == _preCompileState);
 			_preCompileState = new PreCompileState();
@@ -78,6 +79,8 @@ namespace Pebble {
 			_classes.Apply();
 		}
 
+		// Call at the end of compilation to revert the stack to the state at the beginning of complilation,
+		// as well as finalize or revert any types added during compilation.
 		public void FinishCompile(bool revert) {
 			stack.RestoreState(_preCompileState.stackState);
 			if (revert) {

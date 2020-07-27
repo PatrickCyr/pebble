@@ -1033,7 +1033,7 @@ Debug::TimerStart();
 			assert(ScriptError::TypesUnrelated) { saturn as RockyPlanet; }
 		}
 		
-		// NOTE: Currently, the right-hand side of "is" and "as" can ONLY be classes. You cannot use it to determine if something is a generic (like a List) or is a specific functype, for instance.
+		// NOTE: You cannot use "is" and "as" on anything other than simple classes. No generics (like Lists) or functypes, for instance.
 	}
 }
 

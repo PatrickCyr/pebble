@@ -11,22 +11,8 @@ using Pebble;
 #if PEBBLECLI
 
 namespace PebbleCLI {
-	class I { };
-	class A : I { };
-	class B : I { };
-
 	class PebbleCLI {
 		public static void Main(string[] arg) {
-
-			I i = new A();
-			if (i is B)
-				Console.WriteLine("WRONG");
-
-			A a = new A();
-			if (a is I)
-				Console.WriteLine("RIGHT");
-			if (a is A)
-				Console.WriteLine("RIGHT");
 
 			// *** Parse arguments.
 
