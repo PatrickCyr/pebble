@@ -1,0 +1,109 @@
+/* Ran into a bug: of the various bits of code that called script functions, the only one that was checking for the Return flag was the basic one in Exec_Call. Therefore, if any of these other callers called a script function that called return, not only would they ignore the return value but they'd end up passing that return flag onto their caller, causing that function to exit early. This file tests all the other places that call script functions and makes sure they are handling the returns properly.
+
+Note that this is just me being extra safe: the code to do the checking was moved into FunctionValue_Script itself, so if it works it one place it should work in them all, but might as well have some tests to prove it.
+*/
+
+class ReturnTester {
+	static const string thisToStringResult = "<ReturnTester.ThisToString result>";
+	static const string thisToScriptResult = "<ReturnTester.ThisToScript result>";
+
+	bool Serialize(Stream stream) {
+		return true;
+	}
+	
+	string ThisToString() {
+		return thisToStringResult;
+	}
+	
+	string ThisToScript(string prefix) {
+		return thisToScriptResult;
+	}
+};
+
+global bool bPostCodeRun = false;
+
+bPostCodeRun = false;
+{
+	num TestSerialize() {
+		ReturnTester a = new;
+
+		Stream stream = new;
+		stream.OpenWriteBinary("delme.bin");
+		stream << a;
+		stream.Close();
+		
+		bPostCodeRun = true;
+		return 8;
+	}
+	assert(8 == TestSerialize());
+}
+assert(bPostCodeRun);
+
+
+bPostCodeRun = false;
+{
+	void TestThisToString() {
+		ReturnTester a = new;
+		string result = $a;
+		assert(ReturnTester::thisToStringResult == result);
+		bPostCodeRun = true;
+	}
+	TestThisToString();
+}
+assert(bPostCodeRun);
+
+
+bPostCodeRun = false;
+{
+	bool TestThisToScript() {
+		ReturnTester a = new;
+		string result = ToScript(a);
+		//its more complicated than this assert(ReturnTester::thisToScriptResult == result);
+		bPostCodeRun = true;
+		true;
+	}
+	assert(TestThisToScript());
+}
+assert(bPostCodeRun);
+
+
+bPostCodeRun = false;
+{
+	bool TestSort() {
+		List<num> ln = new { Add(3, 2, 1); };
+
+		num sortFunc(num l, num r) {
+			if (l < r)
+				return -1;
+			return 1;
+		}
+
+		ln.Sort(sortFunc);
+		
+		assert(ln[0] == 1 && ln[1] == 2 && ln[2] == 3);
+		
+		bPostCodeRun = true;
+		true;
+	}
+	assert(TestSort());
+}
+assert(bPostCodeRun);
+
+
+bPostCodeRun = false;
+{
+	num TestAssertCallback() {
+		bool MyAssertCallback(bool success, string msg) {
+			return true;
+		}
+
+		functype<bool(bool, string)> old = Debug::SetAssertCallback(MyAssertCallback);
+		assert(false);
+		Debug::SetAssertCallback(old);
+		
+		bPostCodeRun = true;
+		7;
+	}
+	assert(7 == TestAssertCallback());
+}
+assert(bPostCodeRun);

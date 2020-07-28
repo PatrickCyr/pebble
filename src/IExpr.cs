@@ -863,16 +863,6 @@ namespace Pebble {
 					return null;
 				}
 
-				if (0 != (context.control.flags & ControlInfo.RETURN)) {
-					result = context.control.result;
-					context.control.result = null;
-					context.control.flags -= ControlInfo.RETURN;
-					Pb.Assert(0 == context.control.flags);
-					return result;
-				} else {
-					Pb.Assert(0 == context.control.flags);
-				}
-
 			} /*else if (null != functionValue) {
 				// Evaluate args here. Used to do it within the functions themselves (ie library functions), but
 				// why duplicate the shit out of this error checking code?

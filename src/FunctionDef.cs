@@ -122,12 +122,19 @@ namespace Pebble {
 					}
 
 					result = _EvaluateInternal(context);
-					if (context.IsRuntimeErrorSet()) {
-						context.stack.PopScope();
-						return null;
-					}
 				}
 				context.stack.PopScope();
+
+				if (context.IsRuntimeErrorSet())
+					return null;
+
+				if (0 != (context.control.flags & ControlInfo.RETURN)) {
+					result = context.control.result;
+					context.control.result = null;
+					context.control.flags -= ControlInfo.RETURN;
+				}
+
+				Pb.Assert(0 == context.control.flags);
 
 				return result;
 			};
