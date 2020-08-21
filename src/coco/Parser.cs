@@ -29,7 +29,7 @@ public class Parser {
 	public const int _ident = 1;
 	public const int _number = 2;
 	public const int _StringLiteral = 3;
-	public const int maxT = 74;
+	public const int maxT = 75;
 
 	// *** constants end *********************************************************
 
@@ -92,7 +92,8 @@ const int // types
 				|| "const" == la.val 
 				|| "functype" == la.val 
 				|| "funcdef" == la.val 
-				|| "static" == la.val)
+				|| "static" == la.val
+				|| "guarded" == la.val)
 			return true;
 		scanner.ResetPeek();
 		Token laa = scanner.Peek();
@@ -199,7 +200,7 @@ const int // types
 			FunctionType(ref type);
 		} else if (la.kind == 1) {
 			TypeSpecifierNoFunc(ref type);
-		} else SynErr(75);
+		} else SynErr(76);
 		if (isConst) type.SetConst(true); 
 	}
 
@@ -212,7 +213,7 @@ const int // types
 		} else if (la.kind == 9) {
 			Get();
 			retType = new TypeRef("void"); 
-		} else SynErr(76);
+		} else SynErr(77);
 		Expect(10);
 		if (la.kind == 1 || la.kind == 8) {
 			FunctionTypeArg(ref args, ref argHasDefaults);
@@ -272,13 +273,13 @@ const int // types
 	}
 
 	void Literal(ref IExpr expr) {
-		if (la.kind == 54) {
+		if (la.kind == 55) {
 			Get();
 			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL); 
-		} else if (la.kind == 55) {
+		} else if (la.kind == 56) {
 			Get();
 			expr = new Expr_Literal(this, false, IntrinsicTypeDefs.BOOL); 
-		} else if (la.kind == 56) {
+		} else if (la.kind == 57) {
 			Get();
 			expr = new Expr_Literal(this, null, IntrinsicTypeDefs.NULL); 
 		} else if (la.kind == 2) {
@@ -287,7 +288,7 @@ const int // types
 		} else if (la.kind == 3) {
 			Get();
 			expr = new Expr_Literal(this, t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING); 
-		} else SynErr(77);
+		} else SynErr(78);
 	}
 
 	void Decl(ref IExpr expr) {
@@ -302,9 +303,12 @@ const int // types
 			} else if (la.kind == 15) {
 				Get();
 				mods._static = true; 
-			} else {
+			} else if (la.kind == 16) {
 				Get();
 				mods._override = true; 
+			} else {
+				Get();
+				mods._guarded = true; 
 			}
 		}
 		if (la.kind == 1 || la.kind == 8) {
@@ -312,12 +316,12 @@ const int // types
 		} else if (la.kind == 9) {
 			Get();
 			type = new TypeRef("void"); 
-		} else SynErr(78);
+		} else SynErr(79);
 		if (null != type) type.SetConst(mods._const); 
 		Ident(ref sym);
-		if (la.kind == 12 || la.kind == 17 || la.kind == 18) {
+		if (la.kind == 12 || la.kind == 18 || la.kind == 19) {
 			expr = new Expr_Set(this, type, sym, mods); 
-			if (la.kind == 12 || la.kind == 17) {
+			if (la.kind == 12 || la.kind == 18) {
 				if (la.kind == 12) {
 					Get();
 					AssignExpr(ref init);
@@ -331,7 +335,7 @@ const int // types
 					expr = new Expr_ScriptToValue(this, expr, script); 
 				}
 			}
-			Expect(18);
+			Expect(19);
 		} else if (la.kind == 10) {
 			Get();
 			if (la.kind == 1 || la.kind == 8) {
@@ -344,7 +348,7 @@ const int // types
 			Expect(11);
 			EmbeddedStatementBlock(ref body);
 			expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); 
-		} else SynErr(79);
+		} else SynErr(80);
 	}
 
 	void Ident(ref string id) {
@@ -364,37 +368,37 @@ const int // types
 				expr = new Expr_Assign(this, expr1, expr2); 
 				break;
 			}
-			case 19: {
+			case 20: {
 				Get();
 				Expr(ref expr2);
 				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr1, expr2)); 
 				break;
 			}
-			case 20: {
+			case 21: {
 				Get();
 				Expr(ref expr2);
 				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr1, expr2)); 
 				break;
 			}
-			case 21: {
+			case 22: {
 				Get();
 				Expr(ref expr2);
 				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr1, expr2)); 
 				break;
 			}
-			case 22: {
+			case 23: {
 				Get();
 				Expr(ref expr2);
 				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr1, expr2)); 
 				break;
 			}
-			case 23: {
+			case 24: {
 				Get();
 				Expr(ref expr2);
 				expr = new Expr_Assign(this, expr1, new Expr_BinOp(this, Expr_BinOp.OP.CONCAT, expr1, expr2)); 
 				break;
 			}
-			case 24: {
+			case 25: {
 				Get();
 				Expr(ref expr2);
 				expr = new Expr_Stream(this, expr1, expr2); 
@@ -413,12 +417,12 @@ const int // types
 		exprBlock = block;
 		IExpr expr = null; 
 		
-		Expect(64);
+		Expect(65);
 		while (StartOf(3)) {
 			EmbeddedStat(ref expr);
 			if (null != expr) block.nodes.Add(expr); expr = null; 
 		}
-		Expect(66);
+		Expect(67);
 	}
 
 	void CondExpr(ref IExpr expr) {
@@ -428,7 +432,7 @@ const int // types
 		if (la.kind == 7) {
 			Get();
 			Expr(ref expr2);
-			Expect(25);
+			Expect(26);
 			CondExpr(ref expr3);
 			expr = new Expr_Conditional(this, expr1, expr2, expr3); 
 		}
@@ -438,7 +442,7 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		LogAndExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 26) {
+		while (la.kind == 27) {
 			Get();
 			LogAndExpr(ref expr2);
 			expr = new Expr_BinOp(this, Expr_BinOp.OP.OR, expr, expr2); 
@@ -449,7 +453,7 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		EqlExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 27) {
+		while (la.kind == 28) {
 			Get();
 			EqlExpr(ref expr2);
 			expr = new Expr_BinOp(this, Expr_BinOp.OP.AND, expr, expr2); 
@@ -461,15 +465,15 @@ const int // types
 		RelExpr(ref expr1);
 		expr = expr1; 
 		while (StartOf(4)) {
-			if (la.kind == 28) {
+			if (la.kind == 29) {
 				Get();
 				RelExpr(ref expr2);
 				expr = new Expr_Compare(this, expr, expr2, false); 
-			} else if (la.kind == 29) {
+			} else if (la.kind == 30) {
 				Get();
 				RelExpr(ref expr2);
 				expr = new Expr_Compare(this, expr, expr2, true);  
-			} else if (la.kind == 17) {
+			} else if (la.kind == 18) {
 				Get();
 				RelExpr(ref expr2);
 				expr = new Expr_ScriptToValue(this, expr, expr2);	
@@ -494,11 +498,11 @@ const int // types
 				Get();
 				AddExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.GT, expr, expr2); 
-			} else if (la.kind == 31) {
+			} else if (la.kind == 32) {
 				Get();
 				AddExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.LEQ, expr, expr2); 
-			} else if (la.kind == 32) {
+			} else if (la.kind == 33) {
 				Get();
 				AddExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.GEQ, expr, expr2); 
@@ -514,12 +518,12 @@ const int // types
 		IExpr expr1 = null, expr2 = null; 
 		MultExpr(ref expr1);
 		expr = expr1; 
-		while (la.kind == 34 || la.kind == 35 || la.kind == 36) {
-			if (la.kind == 34) {
+		while (la.kind == 35 || la.kind == 36 || la.kind == 37) {
+			if (la.kind == 35) {
 				Get();
 				MultExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.ADD, expr, expr2); 
-			} else if (la.kind == 35) {
+			} else if (la.kind == 36) {
 				Get();
 				MultExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.SUB, expr, expr2); 
@@ -536,15 +540,15 @@ const int // types
 		CastExpr(ref expr1);
 		expr = expr1; 
 		while (StartOf(6)) {
-			if (la.kind == 37) {
+			if (la.kind == 38) {
 				Get();
 				CastExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.MULT, expr, expr2); 
-			} else if (la.kind == 38) {
+			} else if (la.kind == 39) {
 				Get();
 				CastExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.DIV, expr, expr2); 
-			} else if (la.kind == 39) {
+			} else if (la.kind == 40) {
 				Get();
 				CastExpr(ref expr2);
 				expr = new Expr_BinOp(this, Expr_BinOp.OP.MOD, expr, expr2); 
@@ -560,7 +564,7 @@ const int // types
 		IExpr expr1 = null; string sym = null; 
 		UnaryExpr(ref expr1);
 		expr = expr1; 
-		if (la.kind == 41) {
+		if (la.kind == 42) {
 			Get();
 			Ident(ref sym);
 			expr = new Expr_As(this, expr1, sym); 
@@ -570,13 +574,13 @@ const int // types
 	void UnaryExpr(ref IExpr expr) {
 		List<int> li = new List<int>(); 
 		while (StartOf(7)) {
-			if (la.kind == 42) {
+			if (la.kind == 43) {
 				Get();
 				li.Add(0); 
-			} else if (la.kind == 43) {
+			} else if (la.kind == 44) {
 				Get();
 				li.Add(1); 
-			} else if (la.kind == 44) {
+			} else if (la.kind == 45) {
 				Get();
 				li.Add(2); 
 			} else {
@@ -602,31 +606,31 @@ const int // types
 		
 		if (StartOf(8)) {
 			PostfixExpr(ref expr);
-		} else if (la.kind == 34) {
-			Get();
-			CastExpr(ref expr);
-			expr = new Expr_UnOp(this, Expr_UnOp.OP.POS, expr); 
 		} else if (la.kind == 35) {
 			Get();
 			CastExpr(ref expr);
+			expr = new Expr_UnOp(this, Expr_UnOp.OP.POS, expr); 
+		} else if (la.kind == 36) {
+			Get();
+			CastExpr(ref expr);
 			expr = new Expr_UnOp(this, Expr_UnOp.OP.NEG, expr); 
-		} else if (la.kind == 46) {
+		} else if (la.kind == 47) {
 			Get();
 			CastExpr(ref expr);
 			expr = new Expr_UnOp(this, Expr_UnOp.OP.NOT, expr); 
-		} else SynErr(80);
+		} else SynErr(81);
 	}
 
 	void PostfixExpr(ref IExpr expr) {
 		ExprList args = null; IExpr indexExpr = null; 
 		Primary(ref expr);
 		while (StartOf(9)) {
-			if (la.kind == 47) {
+			if (la.kind == 48) {
 				Get();
 				Expr(ref indexExpr);
-				Expect(48);
+				Expect(49);
 				expr = new Expr_Index(this, expr, indexExpr); 
-			} else if (la.kind == 49) {
+			} else if (la.kind == 50) {
 				Get();
 				Expect(1);
 				expr = new Expr_Dot(this, expr, t.val); 
@@ -637,7 +641,7 @@ const int // types
 				}
 				Expect(11);
 				expr = new Expr_Call(this, expr, args); args = null; 
-			} else if (la.kind == 42) {
+			} else if (la.kind == 43) {
 				Get();
 				expr = new Expr_Postrement(this, expr, false); 
 			} else {
@@ -651,20 +655,20 @@ const int // types
 		string className = null; IExpr exprBlock = null; ITypeRef valType = null; IExpr initializer = null; 
 		if (IsScopeOpStart()) {
 			Ident(ref className);
-			Expect(50);
+			Expect(51);
 			Expect(1);
 			expr = new Expr_Scope(this, className, t.val); 
-		} else if (la.kind == 50) {
+		} else if (la.kind == 51) {
 			Get();
 			Expect(1);
 			expr = new Expr_Scope(this, null, t.val); 
 		} else if (la.kind == 1) {
 			Get();
 			expr = new Expr_Symbol(this, t.val); 
-		} else if (la.kind == 51) {
+		} else if (la.kind == 52) {
 			Get();
 			expr = new Expr_This(this); 
-		} else if (la.kind == 52) {
+		} else if (la.kind == 53) {
 			Get();
 			EmbeddedStatementBlock(ref exprBlock);
 			expr = new Expr_Catch(this, exprBlock); 
@@ -674,16 +678,16 @@ const int // types
 			Get();
 			Expr(ref expr);
 			Expect(11);
-		} else if (la.kind == 53) {
+		} else if (la.kind == 54) {
 			Get();
 			if (la.kind == 1) {
 				TypeSpecifierNoFunc(ref valType);
 			}
-			if (la.kind == 64) {
+			if (la.kind == 65) {
 				EmbeddedStatementBlock(ref initializer);
 			}
 			expr = new Expr_New(this, valType, initializer); 
-		} else SynErr(81);
+		} else SynErr(82);
 	}
 
 	void ArgExprList(ref ExprList args) {
@@ -699,7 +703,7 @@ const int // types
 
 	void ForExpr(ref IExpr expr) {
 		string sym = null; IExpr minExpr = null; IExpr maxExpr = null; IExpr body = null; IExpr stepExpr = null; 
-		Expect(57);
+		Expect(58);
 		Expect(10);
 		Ident(ref sym);
 		Expect(12);
@@ -718,74 +722,74 @@ const int // types
 	void ForOrIfStat(ref IExpr expr) {
 		Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; 
 		switch (la.kind) {
-		case 64: {
+		case 65: {
 			EmbeddedStatementBlock(ref expr);
 			break;
 		}
-		case 1: case 2: case 3: case 10: case 34: case 35: case 42: case 43: case 44: case 45: case 46: case 50: case 51: case 52: case 53: case 54: case 55: case 56: {
+		case 1: case 2: case 3: case 10: case 35: case 36: case 43: case 44: case 45: case 46: case 47: case 51: case 52: case 53: case 54: case 55: case 56: case 57: {
 			Expr(ref expr);
-			Expect(18);
+			Expect(19);
 			break;
 		}
-		case 69: {
+		case 70: {
 			Get();
 			Expect(10);
 			Expr(ref cond);
 			Expect(11);
 			EmbeddedStat(ref trueCase);
 			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
-			if (la.kind == 70) {
+			if (la.kind == 71) {
 				Get();
 				EmbeddedStat(ref falseCase);
 				ifExpr.falseCase = falseCase; 
 			}
 			break;
 		}
-		case 57: {
+		case 58: {
 			ForExpr(ref expr);
 			break;
 		}
-		case 58: {
+		case 59: {
 			ForEachExpr(ref expr);
-			break;
-		}
-		case 71: {
-			Get();
-			Expect(18);
-			expr = new Expr_Break(this); 
 			break;
 		}
 		case 72: {
 			Get();
-			Expect(18);
-			expr = new Expr_Continue(this); 
+			Expect(19);
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 73: {
 			Get();
+			Expect(19);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 74: {
+			Get();
 			if (StartOf(10)) {
 				Expr(ref cond);
 			}
-			Expect(18);
+			Expect(19);
 			expr = new Expr_Return(this, cond); 
 			break;
 		}
-		case 18: {
+		case 19: {
 			Get();
 			break;
 		}
-		default: SynErr(82); break;
+		default: SynErr(83); break;
 		}
 	}
 
 	void ForEachExpr(ref IExpr expr) {
 		string kIdent = null, vIdent = null; IExpr sym = null, body = null; 
-		Expect(58);
+		Expect(59);
 		Expect(10);
 		Ident(ref kIdent);
 		Expect(5);
 		Ident(ref vIdent);
-		Expect(59);
+		Expect(60);
 		Expr(ref sym);
 		Expect(11);
 		ForOrIfStat(ref body);
@@ -794,7 +798,7 @@ const int // types
 
 	void TypeAliasStat(ref IExpr expr) {
 		ITypeRef typeRef = null; string ident = null; 
-		Expect(60);
+		Expect(61);
 		Ident(ref ident);
 		Expect(12);
 		TypeSpecifier(ref typeRef);
@@ -803,8 +807,8 @@ const int // types
 
 	void Class(ref IExpr expr) {
 		Expr_Class scope = null; bool isSealed = false; bool isUninstantiable = false; IExpr memberDec = null; IExpr block = null; 
-		while (la.kind == 61 || la.kind == 62) {
-			if (la.kind == 61) {
+		while (la.kind == 62 || la.kind == 63) {
+			if (la.kind == 62) {
 				Get();
 				isSealed = true; 
 			} else {
@@ -812,15 +816,15 @@ const int // types
 				isUninstantiable = true; 
 			}
 		}
-		Expect(63);
+		Expect(64);
 		Expect(1);
 		scope = new Expr_Class(this, t.val); expr = scope; scope.isSealed = isSealed; scope.isUninstantiable = isUninstantiable; 
-		if (la.kind == 25) {
+		if (la.kind == 26) {
 			Get();
 			Expect(1);
 			scope.parent = t.val; 
 		}
-		if (la.kind == 64) {
+		if (la.kind == 65) {
 			Get();
 			while (StartOf(12)) {
 				if (StartOf(13)) {
@@ -832,20 +836,20 @@ const int // types
 					scope.SetConstructor(context, block); 
 				}
 			}
-			Expect(66);
+			Expect(67);
 		}
-		Expect(18);
+		Expect(19);
 	}
 
 	void Enum(ref IExpr expr) {
 		IExpr initializer = null; Expr_Enum e = null; ITypeRef enumType = null; string exprName; string valName = null;
-		Expect(67);
+		Expect(68);
 		Expect(4);
 		TypeSpecifier(ref enumType);
 		Expect(6);
 		Expect(1);
 		exprName = t.val; e = new Expr_Enum(this, exprName, enumType); expr = e; 
-		Expect(64);
+		Expect(65);
 		if (la.kind == 1) {
 			Ident(ref valName);
 			if (la.kind == 12) {
@@ -866,12 +870,12 @@ const int // types
 		if (la.kind == 5) {
 			Get();
 		}
-		Expect(66);
+		Expect(67);
 	}
 
 	void Assert(ref IExpr expr) {
 		IExpr conditionExpr = null; IExpr messageExpr = null; IExpr block = null; 
-		Expect(68);
+		Expect(69);
 		Expect(10);
 		Expr(ref conditionExpr);
 		while (la.kind == 5) {
@@ -879,11 +883,11 @@ const int // types
 			Expr(ref messageExpr);
 		}
 		Expect(11);
-		if (la.kind == 64) {
+		if (la.kind == 65) {
 			StatBlock(ref block);
-		} else if (la.kind == 18) {
+		} else if (la.kind == 19) {
 			Get();
-		} else SynErr(83);
+		} else SynErr(84);
 		#if PEBBLE_ASSERTOFF
 			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
 		#else
@@ -897,166 +901,166 @@ const int // types
 		exprBlock = block;
 		IExpr expr = null; 
 		
-		Expect(64);
+		Expect(65);
 		while (StartOf(14)) {
 			Stat(ref expr);
 			if (null != expr) block.nodes.Add(expr); expr = null; 
 		}
-		Expect(66);
+		Expect(67);
 	}
 
 	void Stat(ref IExpr expr) {
 		Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; 
 		switch (la.kind) {
-		case 64: {
+		case 65: {
 			StatBlock(ref expr);
 			break;
 		}
-		case 61: case 62: case 63: {
+		case 62: case 63: case 64: {
 			Class(ref expr);
 			break;
 		}
-		case 67: {
+		case 68: {
 			Enum(ref expr);
 			break;
 		}
-		case 69: {
+		case 70: {
 			Get();
 			Expect(10);
 			Expr(ref cond);
 			Expect(11);
 			ForOrIfStat(ref trueCase);
 			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
-			if (la.kind == 70) {
+			if (la.kind == 71) {
 				Get();
 				ForOrIfStat(ref falseCase);
 				ifExpr.falseCase = falseCase; 
 			}
 			break;
 		}
-		case 57: {
+		case 58: {
 			ForExpr(ref expr);
 			break;
 		}
-		case 58: {
+		case 59: {
 			ForEachExpr(ref expr);
 			break;
 		}
-		case 68: {
+		case 69: {
 			Assert(ref expr);
-			break;
-		}
-		case 71: {
-			Get();
-			Expect(18);
-			expr = new Expr_Break(this); 
 			break;
 		}
 		case 72: {
 			Get();
-			Expect(18);
-			expr = new Expr_Continue(this); 
+			Expect(19);
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 73: {
 			Get();
+			Expect(19);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 74: {
+			Get();
 			if (StartOf(10)) {
 				Expr(ref cond);
 			}
-			Expect(18);
+			Expect(19);
 			expr = new Expr_Return(this, cond); 
 			break;
 		}
-		case 60: {
+		case 61: {
 			TypeAliasStat(ref expr);
-			Expect(18);
+			Expect(19);
 			break;
 		}
-		case 1: case 2: case 3: case 8: case 9: case 10: case 13: case 14: case 15: case 16: case 34: case 35: case 42: case 43: case 44: case 45: case 46: case 50: case 51: case 52: case 53: case 54: case 55: case 56: {
+		case 1: case 2: case 3: case 8: case 9: case 10: case 13: case 14: case 15: case 16: case 17: case 35: case 36: case 43: case 44: case 45: case 46: case 47: case 51: case 52: case 53: case 54: case 55: case 56: case 57: {
 			if (IsDecl()) {
 				Decl(ref expr);
 			} else {
 				Expr(ref expr);
-				Expect(18);
+				Expect(19);
 			}
 			break;
 		}
-		case 18: {
+		case 19: {
 			Get();
 			break;
 		}
-		default: SynErr(84); break;
+		default: SynErr(85); break;
 		}
 	}
 
 	void EmbeddedStat(ref IExpr expr) {
 		Expr_If ifExpr = null; IExpr cond = null; IExpr trueCase = null; IExpr falseCase = null; 
 		switch (la.kind) {
-		case 64: {
+		case 65: {
 			EmbeddedStatementBlock(ref expr);
 			break;
 		}
-		case 1: case 2: case 3: case 8: case 9: case 10: case 13: case 14: case 15: case 16: case 34: case 35: case 42: case 43: case 44: case 45: case 46: case 50: case 51: case 52: case 53: case 54: case 55: case 56: {
+		case 1: case 2: case 3: case 8: case 9: case 10: case 13: case 14: case 15: case 16: case 17: case 35: case 36: case 43: case 44: case 45: case 46: case 47: case 51: case 52: case 53: case 54: case 55: case 56: case 57: {
 			if (IsDecl()) {
 				Decl(ref expr);
 			} else {
 				Expr(ref expr);
-				Expect(18);
+				Expect(19);
 			}
 			break;
 		}
-		case 69: {
+		case 70: {
 			Get();
 			Expect(10);
 			Expr(ref cond);
 			Expect(11);
 			ForOrIfStat(ref trueCase);
 			ifExpr = new Expr_If(this, cond, trueCase); expr = ifExpr; 
-			if (la.kind == 70) {
+			if (la.kind == 71) {
 				Get();
 				ForOrIfStat(ref falseCase);
 				ifExpr.falseCase = falseCase; 
 			}
 			break;
 		}
-		case 57: {
+		case 58: {
 			ForExpr(ref expr);
 			break;
 		}
-		case 58: {
+		case 59: {
 			ForEachExpr(ref expr);
 			break;
 		}
-		case 68: {
+		case 69: {
 			Assert(ref expr);
-			break;
-		}
-		case 71: {
-			Get();
-			Expect(18);
-			expr = new Expr_Break(this); 
 			break;
 		}
 		case 72: {
 			Get();
-			Expect(18);
-			expr = new Expr_Continue(this); 
+			Expect(19);
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 73: {
 			Get();
+			Expect(19);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 74: {
+			Get();
 			if (StartOf(10)) {
 				Expr(ref cond);
 			}
-			Expect(18);
+			Expect(19);
 			expr = new Expr_Return(this, cond); 
 			break;
 		}
-		case 18: {
+		case 19: {
 			Get();
 			break;
 		}
-		default: SynErr(85); break;
+		default: SynErr(86); break;
 		}
 	}
 
@@ -1098,21 +1102,21 @@ const int // types
 	
 	static readonly bool[,] set = {
 		// *** initialization *************************************************
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x,_x,_x,_x, _T,_x,_x,_x, _T,_T,_x,_T, _T,_T,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_x, _T,_T,_T,_T, _T,_x,_x,_T, _T,_T,_x,_T, _T,_T,_x,_x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_T,_x,_x, _x,_T,_T,_x, _T,_T,_T,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_T,_T,_T, _T,_T,_x,_x, _T,_T,_T,_x, _T,_T,_T,_x, _x}
 
 		// *** initialization end *********************************************
 	};
@@ -1145,75 +1149,76 @@ public class Errors {
 			case 14: s = "\"global\" expected"; break;
 			case 15: s = "\"static\" expected"; break;
 			case 16: s = "\"override\" expected"; break;
-			case 17: s = "\"<-\" expected"; break;
-			case 18: s = "\";\" expected"; break;
-			case 19: s = "\"+=\" expected"; break;
-			case 20: s = "\"-=\" expected"; break;
-			case 21: s = "\"*=\" expected"; break;
-			case 22: s = "\"/=\" expected"; break;
-			case 23: s = "\"..=\" expected"; break;
-			case 24: s = "\"<<\" expected"; break;
-			case 25: s = "\":\" expected"; break;
-			case 26: s = "\"||\" expected"; break;
-			case 27: s = "\"&&\" expected"; break;
-			case 28: s = "\"==\" expected"; break;
-			case 29: s = "\"!=\" expected"; break;
-			case 30: s = "\"is\" expected"; break;
-			case 31: s = "\"<=\" expected"; break;
-			case 32: s = "\">=\" expected"; break;
-			case 33: s = "\"~=\" expected"; break;
-			case 34: s = "\"+\" expected"; break;
-			case 35: s = "\"-\" expected"; break;
-			case 36: s = "\"..\" expected"; break;
-			case 37: s = "\"*\" expected"; break;
-			case 38: s = "\"/\" expected"; break;
-			case 39: s = "\"%\" expected"; break;
-			case 40: s = "\"**\" expected"; break;
-			case 41: s = "\"as\" expected"; break;
-			case 42: s = "\"++\" expected"; break;
-			case 43: s = "\"--\" expected"; break;
-			case 44: s = "\"#\" expected"; break;
-			case 45: s = "\"$\" expected"; break;
-			case 46: s = "\"!\" expected"; break;
-			case 47: s = "\"[\" expected"; break;
-			case 48: s = "\"]\" expected"; break;
-			case 49: s = "\".\" expected"; break;
-			case 50: s = "\"::\" expected"; break;
-			case 51: s = "\"this\" expected"; break;
-			case 52: s = "\"catch\" expected"; break;
-			case 53: s = "\"new\" expected"; break;
-			case 54: s = "\"true\" expected"; break;
-			case 55: s = "\"false\" expected"; break;
-			case 56: s = "\"null\" expected"; break;
-			case 57: s = "\"for\" expected"; break;
-			case 58: s = "\"foreach\" expected"; break;
-			case 59: s = "\"in\" expected"; break;
-			case 60: s = "\"typealias\" expected"; break;
-			case 61: s = "\"sealed\" expected"; break;
-			case 62: s = "\"uninstantiable\" expected"; break;
-			case 63: s = "\"class\" expected"; break;
-			case 64: s = "\"{\" expected"; break;
-			case 65: s = "\"constructor\" expected"; break;
-			case 66: s = "\"}\" expected"; break;
-			case 67: s = "\"enum\" expected"; break;
-			case 68: s = "\"assert\" expected"; break;
-			case 69: s = "\"if\" expected"; break;
-			case 70: s = "\"else\" expected"; break;
-			case 71: s = "\"break\" expected"; break;
-			case 72: s = "\"continue\" expected"; break;
-			case 73: s = "\"return\" expected"; break;
-			case 74: s = "??? expected"; break;
-			case 75: s = "invalid TypeSpecifier"; break;
-			case 76: s = "invalid FunctionType"; break;
-			case 77: s = "invalid Literal"; break;
-			case 78: s = "invalid Decl"; break;
+			case 17: s = "\"guarded\" expected"; break;
+			case 18: s = "\"<-\" expected"; break;
+			case 19: s = "\";\" expected"; break;
+			case 20: s = "\"+=\" expected"; break;
+			case 21: s = "\"-=\" expected"; break;
+			case 22: s = "\"*=\" expected"; break;
+			case 23: s = "\"/=\" expected"; break;
+			case 24: s = "\"..=\" expected"; break;
+			case 25: s = "\"<<\" expected"; break;
+			case 26: s = "\":\" expected"; break;
+			case 27: s = "\"||\" expected"; break;
+			case 28: s = "\"&&\" expected"; break;
+			case 29: s = "\"==\" expected"; break;
+			case 30: s = "\"!=\" expected"; break;
+			case 31: s = "\"is\" expected"; break;
+			case 32: s = "\"<=\" expected"; break;
+			case 33: s = "\">=\" expected"; break;
+			case 34: s = "\"~=\" expected"; break;
+			case 35: s = "\"+\" expected"; break;
+			case 36: s = "\"-\" expected"; break;
+			case 37: s = "\"..\" expected"; break;
+			case 38: s = "\"*\" expected"; break;
+			case 39: s = "\"/\" expected"; break;
+			case 40: s = "\"%\" expected"; break;
+			case 41: s = "\"**\" expected"; break;
+			case 42: s = "\"as\" expected"; break;
+			case 43: s = "\"++\" expected"; break;
+			case 44: s = "\"--\" expected"; break;
+			case 45: s = "\"#\" expected"; break;
+			case 46: s = "\"$\" expected"; break;
+			case 47: s = "\"!\" expected"; break;
+			case 48: s = "\"[\" expected"; break;
+			case 49: s = "\"]\" expected"; break;
+			case 50: s = "\".\" expected"; break;
+			case 51: s = "\"::\" expected"; break;
+			case 52: s = "\"this\" expected"; break;
+			case 53: s = "\"catch\" expected"; break;
+			case 54: s = "\"new\" expected"; break;
+			case 55: s = "\"true\" expected"; break;
+			case 56: s = "\"false\" expected"; break;
+			case 57: s = "\"null\" expected"; break;
+			case 58: s = "\"for\" expected"; break;
+			case 59: s = "\"foreach\" expected"; break;
+			case 60: s = "\"in\" expected"; break;
+			case 61: s = "\"typealias\" expected"; break;
+			case 62: s = "\"sealed\" expected"; break;
+			case 63: s = "\"uninstantiable\" expected"; break;
+			case 64: s = "\"class\" expected"; break;
+			case 65: s = "\"{\" expected"; break;
+			case 66: s = "\"constructor\" expected"; break;
+			case 67: s = "\"}\" expected"; break;
+			case 68: s = "\"enum\" expected"; break;
+			case 69: s = "\"assert\" expected"; break;
+			case 70: s = "\"if\" expected"; break;
+			case 71: s = "\"else\" expected"; break;
+			case 72: s = "\"break\" expected"; break;
+			case 73: s = "\"continue\" expected"; break;
+			case 74: s = "\"return\" expected"; break;
+			case 75: s = "??? expected"; break;
+			case 76: s = "invalid TypeSpecifier"; break;
+			case 77: s = "invalid FunctionType"; break;
+			case 78: s = "invalid Literal"; break;
 			case 79: s = "invalid Decl"; break;
-			case 80: s = "invalid UnaryPost"; break;
-			case 81: s = "invalid Primary"; break;
-			case 82: s = "invalid ForOrIfStat"; break;
-			case 83: s = "invalid Assert"; break;
-			case 84: s = "invalid Stat"; break;
-			case 85: s = "invalid EmbeddedStat"; break;
+			case 80: s = "invalid Decl"; break;
+			case 81: s = "invalid UnaryPost"; break;
+			case 82: s = "invalid Primary"; break;
+			case 83: s = "invalid ForOrIfStat"; break;
+			case 84: s = "invalid Assert"; break;
+			case 85: s = "invalid Stat"; break;
+			case 86: s = "invalid EmbeddedStat"; break;
 
 			// *** errors end *************************************************
 			default: s = "error " + n; break;

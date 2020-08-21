@@ -1,0 +1,93 @@
+/////////////////////////////////////////////
+// const
+
+class ConstTest {
+	static num nextId = 1;
+	// const is *not* static in Pebble, which allows us to initialize a const variable differently for each instance of the class, like this:
+	const num id = nextId++;
+	
+	constructor {
+		assert (ScriptError::AssignToConst) { id = -1; }
+	}
+	
+	void F() {
+		assert (ScriptError::AssignToConst) { id = -1; }
+	}
+};
+
+ConstTest a = new {
+	assert (ScriptError::AssignToConst) { id = -1; }
+};
+assert (ScriptError::AssignToConst) { a.id = -1; }
+
+assert(1 == a.id);
+ConstTest a2 = new;
+assert(2 == a2.id);
+
+// All syntax errors.
+//assert(ScriptError::SyntaxError) { List<const num> lcn; }
+//functype<const num()> fcn;
+//functype<num(const num)> fcn;
+
+/////////////////////////////////////////////
+// guarded
+
+assert(ScriptError::GuardedClassMembersOnly) { guarded num g; }
+assert(ScriptError::GuardedClassMembersOnly) { guarded void F(){} }
+
+assert (ScriptError::GuardedClassMembersOnly) { guarded num nonclass; }
+
+class GuardedTest {
+	static guarded num sn = 100;
+	guarded num n = 1;
+	
+	// These generate ScriptError::GuardedNonConst
+	//guarded const num sgc;
+	//static guarded const num sgcn;
+	
+	constructor {
+		GuardedTest::sn = 200;
+		n = 2;
+	}
+	
+	GuardedTest F() {
+		sn = 300;
+		n = 3;
+		this;
+	}
+	
+	// GuardedClassMembersOnly
+	//guarded void G() {}
+	
+	// ClassMemberFunctionsConst
+	//guarded const void D() {}
+};
+
+GuardedTest g = new {
+	n = 4;
+};
+
+// Dot
+assert (ScriptError::AssignToConst) { g.n = 5; } 
+assert (ScriptError::AssignToConst) { GuardedTest::sn = 5; } 
+
+// Function call.
+assert (ScriptError::AssignToConst) { g.F().n = 7; }
+
+// Index
+List<GuardedTest> lgt = new { Add(g); };
+assert (ScriptError::AssignToConst) { lgt[0].n = 9; }
+
+class GuardedChild : GuardedTest {
+	constructor {
+		n = 1000;
+		GuardedTest::sn = 7;
+	}
+};
+
+GuardedChild gc = new {
+	n *= 3;
+	GuardedTest::sn *= 3;
+};
+assert(3000 == gc.n);
+assert(21 == GuardedTest::sn);

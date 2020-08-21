@@ -38,9 +38,9 @@ namespace Pebble {
 		virtual public bool RegisterTypes(ExecContext context, ref bool error) {
 			return true;
 		}
-		
+
 		abstract public ITypeDef TypeCheck(ExecContext context, ref bool error);
-		
+
 		abstract public object Evaluate(ExecContext context);
 
 		abstract public string MyToString(string indent);
@@ -194,8 +194,8 @@ namespace Pebble {
 				} else {
 					pushResult = context.stack.PushCall(funcType, inLang.originalName, null, false, null);
 				}
-				
-				if (!pushResult) { 
+
+				if (!pushResult) {
 					LogCompileErr(context, ParseErrorType.StackOverflow, "Expr_Literal : stack overflow pushing scope for function body.");
 					error = true;
 					return null;
@@ -225,7 +225,7 @@ namespace Pebble {
 					// Every function written in Pebble is a literal. This is where we type check any default values in Pebble script function arguments for type correctness.
 					if (funcType.minArgs < funcType.argTypes.Count) {
 						// More thorough gap check, and default value type check.
-						if (null != inLang.argDefaultValues) { 
+						if (null != inLang.argDefaultValues) {
 							for (int ii = funcType.minArgs; ii < funcType.argTypes.Count; ++ii) {
 								ITypeDef defaultType = inLang.argDefaultValues[ii].TypeCheck(context, ref error);
 								if (!funcType.argTypes[ii].CanStoreValue(context, defaultType)) {
@@ -324,7 +324,7 @@ namespace Pebble {
 				return null;
 			}
 
-			_ref = context.GetVarRefByName(_symbol);
+			_ref = context.GetVarRefByName(context, _symbol);
 			if (!_ref.isValid) {
 				LogCompileErr(context, ParseErrorType.SymbolNotFound, "Symbol (" + _symbol + ") not found.");
 				error = true;
@@ -416,7 +416,7 @@ namespace Pebble {
 
 			ITypeDef fieldType = null;
 			// Dot operator can only return normal fields. The Scope operator is what returns static members.
-			MemberRef fieldRef = scope.GetMemberRef(_field, ClassDef.SEARCH.NORMAL, ref fieldType);
+			MemberRef fieldRef = scope.GetMemberRef(context, _field, ClassDef.SEARCH.NORMAL, ref fieldType);
 			if (fieldRef.isInvalid) {
 				LogCompileErr(context, ParseErrorType.ClassMemberNotFound, "Member " + _field + " not found in class " + scopeName + ".");
 				error = true;
@@ -488,7 +488,7 @@ namespace Pebble {
 
 			ITypeDef fieldType = null;
 			if (null == _className) {
-				_globVarRef = context.GetVarRefByName(_field, true);
+				_globVarRef = context.GetVarRefByName(context, _field, true);
 				if (!_globVarRef.isValid) {
 					LogCompileErr(context, ParseErrorType.SymbolNotFound, "No global found with name '" + _field + "'.");
 					error = true;
@@ -504,12 +504,12 @@ namespace Pebble {
 				}
 
 				// Search first for statics.
-				_fieldRef = _scope.GetMemberRef(_field, ClassDef.SEARCH.STATIC, ref fieldType);
+				_fieldRef = _scope.GetMemberRef(context, _field, ClassDef.SEARCH.STATIC, ref fieldType);
 				if (_fieldRef.isInvalid) {
 					ClassDef currentClassDef = context.stack.GetCurrentClassDef();
 					if (null != currentClassDef) {
 						if (currentClassDef.IsChildOf(_scope)) {
-							_fieldRef = _scope.GetMemberRef(_field, ClassDef.SEARCH.NORMAL, ref fieldType);
+							_fieldRef = _scope.GetMemberRef(context, _field, ClassDef.SEARCH.NORMAL, ref fieldType);
 						}
 					}
 				}
@@ -1174,12 +1174,26 @@ namespace Pebble {
 					LogCompileErr(context, ParseErrorType.OverrideNonMemberFunction, "Only class member functions can be 'override'.");
 					error = true;
 				}
+				if (declMods._guarded) {
+					LogCompileErr(context, ParseErrorType.GuardedClassMembersOnly, "Only class fields can be 'guarded'.");
+					error = true;
+				}
 
 				// This is weird. We don't want function literals to be *specified* as const because they are
 				// *automatically* const. This code is just checking that the user didn't specify as const.
 				// We insure they are const in CreateFunctionLiteral when we create the TypeRef.
-				if (isFunctionLiteral && declMods._const) {
+				if (isFunctionLiteral && (declMods._const || declMods._guarded)) {
 					LogCompileErr(context, ParseErrorType.FunctionLiteralsAreImplicitlyConst, "Function literals are implicitly const.");
+					error = true;
+				}
+			} else {
+				if (declMods._guarded && declMods._const) {
+					LogCompileErr(context, ParseErrorType.GuardedNonConst, "Variables cannot simultaneously be const and guarded.");
+					error = true;
+				}
+
+				if (isFunctionLiteral && declMods._guarded) {
+					LogCompileErr(context, ParseErrorType.GuardedClassMembersOnly, "Only class fields can be 'guarded'.");
 					error = true;
 				}
 			}
@@ -2104,7 +2118,7 @@ namespace Pebble {
 						_classDef.AddFunctionOverride(set.symbol, memberTypeDef, null);
 
 					} else {
-						if (!_classDef.AddMember(set.symbol, memberTypeDef, set.value, set.declMods._static, !set.isFunctionLiteral)) {
+						if (!_classDef.AddMember(set.symbol, memberTypeDef, set.value, set.declMods._static, !set.isFunctionLiteral, set.declMods._guarded)) {
 							LogCompileErr(context, ParseErrorType.ClassMemberShadowed, "Cannot add field " + set.symbol + " to class " + _classDef.name + " because it would shadow another field.");
 							_preregError = true;
 							continue;
@@ -2133,10 +2147,6 @@ namespace Pebble {
 				// Type check the constructor.
 				if (null != _constructorBlock) {
 					_constructorBlock.TypeCheck(context, ref error);
-					if (error) {
-						LogCompileErr(context, ParseErrorType.SyntaxError, "Type check error in constructor.");
-						error = true;
-					}
 
 					_classDef.constructor = _constructorBlock;
 				}

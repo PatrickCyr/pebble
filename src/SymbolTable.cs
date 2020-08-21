@@ -236,7 +236,7 @@ namespace Pebble {
 		public bool IsSymbolAvailable(ExecContext context, string symbol, bool ignoreGlobals = false) {
 			if (context.DoesTypeExist(symbol))
 				return false;
-			VarStackRef index = GetVarIndexByName(symbol);
+			VarStackRef index = GetVarIndexByName(null, symbol);
 			return !index.isValid || (ignoreGlobals && index.isGlobal);
 		}
 		/*
@@ -252,7 +252,8 @@ namespace Pebble {
 			if (global)
 				return _globals.Get(symbol);
 
-			VarStackRef vsr = GetVarIndexByName(symbol);
+			// unsure about this null
+			VarStackRef vsr = GetVarIndexByName(null, symbol);
 			return GetVarAtIndex(vsr);
 		}
 
@@ -491,7 +492,7 @@ namespace Pebble {
 		// adds a lot of complexity to the system. Since the idea is to create these Refs during
 		// TypeCheck, any discrepancy between the order scopes are pushed/popped and variables created
 		// between TypeCheck and Evaluate WILL result in a grave error.
-		public VarStackRef GetVarIndexByName(string name) {
+		public VarStackRef GetVarIndexByName(ExecContext context, string name) {
 
 			int callIx = _callCount;
 			int varIx = _varCount - 1;
@@ -502,7 +503,7 @@ namespace Pebble {
 					// If this scope is a class function call, search that class for 
 					// a member with that name.
 					ITypeDef typeDef = null;
-					MemberRef memRef = _callStack[callIx].classInstance.classDef.GetMemberRef(name, scope.isStatic ? ClassDef.SEARCH.STATIC : ClassDef.SEARCH.EITHER, ref typeDef);
+					MemberRef memRef = _callStack[callIx].classInstance.classDef.GetMemberRef(context, name, scope.isStatic ? ClassDef.SEARCH.STATIC : ClassDef.SEARCH.EITHER, ref typeDef);
 					if (!memRef.isInvalid) {
 						return new VarStackRef(typeDef, callIx - _callCount, memRef);
 					}
@@ -510,7 +511,7 @@ namespace Pebble {
 
 				if (null != scope.classDef) {
 					ITypeDef typeDef = null;
-					MemberRef memRef = _callStack[callIx].classDef.GetMemberRef(name, scope.isStatic ? ClassDef.SEARCH.STATIC : ClassDef.SEARCH.EITHER, ref typeDef);
+					MemberRef memRef = _callStack[callIx].classDef.GetMemberRef(context, name, scope.isStatic ? ClassDef.SEARCH.STATIC : ClassDef.SEARCH.EITHER, ref typeDef);
 					if (!memRef.isInvalid) {
 						return new VarStackRef(typeDef, callIx - _callCount, memRef);
 					}

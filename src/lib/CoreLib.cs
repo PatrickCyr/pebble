@@ -56,7 +56,7 @@ namespace Pebble {
 				result = "new " + table.classDef.typeDef.ToString() + " {\n";
 
 				// ThisToScript must not be static. It's going to be printing info about a class instance, right?
-				MemberRef toStrMem = table.classDef.GetMemberRef("ThisToScript", ClassDef.SEARCH.NORMAL);
+				MemberRef toStrMem = table.classDef.GetMemberRef(null, "ThisToScript", ClassDef.SEARCH.NORMAL);
 				Variable funcVar = null;
 				if (!toStrMem.isInvalid)
 					funcVar = table.Get(toStrMem) as Variable;

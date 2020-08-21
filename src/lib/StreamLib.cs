@@ -120,7 +120,7 @@ namespace Pebble {
 					writer.Write(enumVal.GetName());
 				} else if (value is ClassValue) {
 					ClassValue classVal = value as ClassValue;
-					MemberRef serMemRef = classVal.classDef.GetMemberRef("Serialize", ClassDef.SEARCH.NORMAL);
+					MemberRef serMemRef = classVal.classDef.GetMemberRef(null, "Serialize", ClassDef.SEARCH.NORMAL);
 					if (serMemRef.isInvalid) {
 						context.SetRuntimeError(RuntimeErrorType.SerializeInvalidClass, "Class '" + classVal.classDef.name + "' cannot be serialized because it doesn't implement a serialization function.");
 						return false;
@@ -279,7 +279,7 @@ namespace Pebble {
 
 					ClassDef streamedClassDef = context.GetClass(streamClassName);
 					Pb.Assert(null != streamedClassDef, "Somehow we got a type for a class but not the def.");
-					MemberRef serMemRef = streamedClassDef.GetMemberRef("Serialize", ClassDef.SEARCH.NORMAL);
+					MemberRef serMemRef = streamedClassDef.GetMemberRef(null, "Serialize", ClassDef.SEARCH.NORMAL);
 					if (serMemRef.isInvalid) {
 						context.SetRuntimeError(RuntimeErrorType.SerializeInvalidClass, "Serialize function of class '" + streamClassName + "' not found.");
 						return false;

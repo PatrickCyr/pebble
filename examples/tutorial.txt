@@ -1035,6 +1035,29 @@ Debug::TimerStart();
 		
 		// NOTE: You cannot use "is" and "as" on anything other than simple classes. No generics (like Lists) or functypes, for instance.
 	}
+	
+	// * guarded
+	{
+		// guarded class fields can only be written to by class code, but can be read by anyone
+		class GuardedTest {
+			// Can assign at creation.
+			guarded num n = 1;
+			
+			void SetN(num newN) {
+				// Can assign inside class function.
+				n = newN;
+			}
+		};
+		
+		GuardedTest gt = new {
+			// Can assign inside defstructor.
+			n = 10;
+		};
+		assert(10 == gt.n);
+		// Cannot assign outside of class code!
+		assert(ScriptError::AssignToConst) { gt.n = 20; }
+	
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1299,10 +1322,7 @@ Debug::TimerStart();
 				Dictionary<string, num> ignored;
 				
 				string ThisToScript(string prefix) {
-					string result = prefix.."new CustomTextSerialization{\n";
-					result ..= prefix.."  s = \""..s.."\";\n";
-					result ..= prefix.."};\n";
-					return result;
+					return prefix.."  s = \""..s.."\";\n";
 				}
 			};
 			

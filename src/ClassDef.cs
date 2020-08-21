@@ -18,11 +18,13 @@ namespace Pebble {
 		public ITypeDef typeDef;
 		public int index;
 		public IExpr initializer;
+		public bool isGuarded;
 
-		public ClassMember(string name, ITypeDef typeDef, IExpr initializer) {
+		public ClassMember(string name, ITypeDef typeDef, IExpr initializer, bool isGuarded) {
 			this.name = name;
 			this.typeDef = typeDef;
 			this.initializer = initializer;
+			this.isGuarded = isGuarded;
 		}
 	}
 
@@ -130,7 +132,7 @@ namespace Pebble {
 
 		public string GetDebugString() {
 			string result = "class " + name + ":\n";
-			for (int ii = 0; ii < _statics.Count; ++ ii) {
+			for (int ii = 0; ii < _statics.Count; ++ii) {
 				ClassMember member = _statics.Get(ii);
 				result += "  static ";
 				if (member.typeDef is TypeDef_Function)
@@ -162,7 +164,7 @@ namespace Pebble {
 					ClassMember member = parent._fields.Get(ii);
 					bool modified = false;
 					ITypeDef resolvedType = parent.IsGeneric() ? member.typeDef.ResolveTemplateTypes(typeDef.genericTypes, ref modified) : member.typeDef;
-					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer);
+					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer, member.isGuarded);
 					newMember.index = _fields.Add(member.name, newMember);
 				}
 			}
@@ -174,7 +176,7 @@ namespace Pebble {
 					ClassMember member = parent._memberFuncs.Get(ii);
 					bool modified = false;
 					ITypeDef resolvedType = parent.IsGeneric() ? member.typeDef.ResolveTemplateTypes(typeDef.genericTypes, ref modified) : member.typeDef;
-					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer);
+					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer, member.isGuarded);
 					newMember.index = _memberFuncs.Add(member.name, newMember);
 				}
 
@@ -223,7 +225,7 @@ namespace Pebble {
 						context.engine.LogCompileError(ParseErrorType.StaticMemberEvaluationError, name + "::" + member.name + " - " + context.GetRuntimeErrorString());
 						return false;
 					}
-				} 
+				}
 				staticVars[ii] = new Variable(member.name, member.typeDef, initValue);
 			}
 
@@ -234,15 +236,18 @@ namespace Pebble {
 			return null != genericTypeNames && genericTypeNames.Count > 0;
 		}
 
-		// Returns true if it succeeds, false if there was a name conflict.
-		public bool AddMember(string name, ITypeDef typeDef, IExpr initializer = null, bool isStatic = false, bool isFunctionVariable = false) {
-			// Fail if a member with that name already exists.
-			var mr = GetMemberRef(name, SEARCH.EITHER);
-			if (!mr.isInvalid) {
-				return false;
-			}
+		public bool DoesFieldExist(string name, SEARCH search) {
+			var mr = GetMemberRef(null, name, search);
+			return !mr.isInvalid;
+		}
 
-			var member = new ClassMember(name, typeDef, initializer);
+		// Returns true if it succeeds, false if there was a name conflict.
+		public bool AddMember(string name, ITypeDef typeDef, IExpr initializer = null, bool isStatic = false, bool isFunctionVariable = false, bool isGuarded = false) {
+			// Fail if a member with that name already exists.
+			if (DoesFieldExist(name, SEARCH.EITHER))
+				return false;
+
+			var member = new ClassMember(name, typeDef, initializer, isGuarded);
 
 			// This logic is weird but works because the language currently 
 			// doesn't allow static member functions.
@@ -279,14 +284,15 @@ namespace Pebble {
 		//	1) we have a parent
 		//	2) it has a function with this name.
 		public void AddFunctionOverride(string name, ITypeDef typeDef, IExpr initializer = null) {
-			var member = new ClassMember(name, typeDef, initializer);
+			var member = new ClassMember(name, typeDef, initializer, false);
 			//var mr = GetMemberRef(name);
 			member.index = _memberFuncs.Set(name, member);
 		}
 
 		// Compile-time function for looking up a member.
 		public ClassMember GetMember(string name, SEARCH searchType) {
-			MemberRef memRef = GetMemberRef(name, searchType);
+			// Can use null here because we aren't doing anything with the member's type.
+			MemberRef memRef = GetMemberRef(null, name, searchType);
 			if (memRef.isInvalid)
 				return null;
 			
@@ -304,7 +310,7 @@ namespace Pebble {
 		}
 
 		// Compile-time lookup of MemberRef.
-		public MemberRef GetMemberRef(string name, SEARCH searchType, ref ITypeDef typeDef) {
+		public MemberRef GetMemberRef(ExecContext context, string name, SEARCH searchType, ref ITypeDef typeDef) {
 			// If there is an error during compliation then we can have an uninitialized
 			// class on the stack. This check prevents us from throwing an exception
 			// when that happens. 
@@ -317,6 +323,15 @@ namespace Pebble {
 				if (_fields.Exists(name)) {
 					var member = _fields.Get(name);
 					typeDef = member.typeDef;
+
+					// If this member is guarded and we are not in this class's context, the type becomes const.
+					if (null != context && member.isGuarded) {
+						ClassDef current = context.stack.GetCurrentClassDef();
+						if (null == current || (current != this && !current.IsChildOf(this))) {
+							typeDef = TypeFactory.GetConstVersion(typeDef);
+						}
+					}
+					
 					return new MemberRef(member.index);
 				}
 
@@ -333,6 +348,15 @@ namespace Pebble {
 					if (def._statics.Exists(name)) {
 						ClassMember member = def._statics.Get(name);
 						typeDef = member.typeDef;
+
+						// If this member is guarded and we are not in this class's context, the type becomes const.
+						if (null != context && member.isGuarded) {
+							ClassDef current = context.stack.GetCurrentClassDef();
+							if (null == current || (current != this && !current.IsChildOf(this))) {
+								typeDef = TypeFactory.GetConstVersion(typeDef);
+							}
+						}
+
 						return new MemberRef(def, MemberType.STATIC, member.index);
 					}
 					def = def.parent;
@@ -342,9 +366,9 @@ namespace Pebble {
 			return MemberRef.invalid;
 		}
 
-		public MemberRef GetMemberRef(string name, SEARCH searchType) {
+		public MemberRef GetMemberRef(ExecContext context, string name, SEARCH searchType) {
 			ITypeDef typeDef = null;
-			return GetMemberRef(name, searchType, ref typeDef);
+			return GetMemberRef(context, name, searchType, ref typeDef);
 		}
 
 		// Runtime access of static variable, having only the ClassDef.
@@ -470,7 +494,9 @@ namespace Pebble {
 
 		public Variable GetByName(string name) {
 			// Because this class is Value, I think that implies we are only searching for normal fields.
-			MemberRef mr = classDef.GetMemberRef(name, ClassDef.SEARCH.NORMAL);
+			// Note: At time of writing, all calls to this are looking up fields that are hard-coded, which 
+			// I believe means they are C#-defined fields and thus will never be guarded.
+			MemberRef mr = classDef.GetMemberRef(null, name, ClassDef.SEARCH.NORMAL);
 			if (mr.isInvalid) {
 				return null;
 			}
@@ -570,8 +596,8 @@ namespace Pebble {
 			_classDef.FinalizeClass(context);
 
 			if (mrName.isInvalid) {
-				mrName = _classDef.GetMemberRef("name", ClassDef.SEARCH.NORMAL);
-				mrValue = _classDef.GetMemberRef("value", ClassDef.SEARCH.NORMAL);
+				mrName = _classDef.GetMemberRef(null, "name", ClassDef.SEARCH.NORMAL);
+				mrValue = _classDef.GetMemberRef(null, "value", ClassDef.SEARCH.NORMAL);
 			}
 		}
 

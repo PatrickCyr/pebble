@@ -178,12 +178,12 @@ namespace Pebble {
 		//         These could be removed at some point.
 		// ***************************************************************************
 
-		public VarStackRef GetVarRefByName(string symbol, bool globalOnly = false) {
+		public VarStackRef GetVarRefByName(ExecContext context, string symbol, bool globalOnly = false) {
 			VarStackRef index;
 			if (globalOnly)
 				index = stack.GetGlobalVarIndexByName(symbol);
 			else
-				index = stack.GetVarIndexByName(symbol);
+				index = stack.GetVarIndexByName(context, symbol);
 #if PEBBLE_TRACESTACK
 			Console.ForegroundColor = ConsoleColor.Green;
 			Console.WriteLine(symbol + " -> " + index.ToString());
@@ -207,8 +207,8 @@ namespace Pebble {
 			if (Pb.reservedWords.Contains(symbol))
 				return new VarStackRef(false);
 
-			VarStackRef existingRef = stack.GetVarIndexByName(symbol);
-			//if (stack.VariableExists(symbol, global)) {
+			// Unsure about this null
+			VarStackRef existingRef = stack.GetVarIndexByName(null, symbol);
 			if (existingRef.isValid) {
 				if (!(doesntCollideWithGlobal && existingRef.isGlobal))
 					return new VarStackRef(false);

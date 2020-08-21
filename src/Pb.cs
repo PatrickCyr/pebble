@@ -40,6 +40,7 @@ namespace Pebble {
 			"funcdef",
 			"functype",
 			"global",
+			"guarded",
 			"if",
 			"in",
 			"new",
@@ -86,6 +87,7 @@ namespace Pebble {
 		public bool _static;
 		public bool _global;
 		public bool _override;
+		public bool _guarded;
 	};
 
 	public enum ParseErrorType {
@@ -105,6 +107,7 @@ namespace Pebble {
 		ClassCannotBeChildOfTemplate,
 		ClassCanOnlyHaveOneConstructor,
 		ClassMemberFunctionsConst,
+		ClassMemberGuarded,
 		ClassMemberNotFound,
 		ClassMembersCannotBeGlobal,
 		ClassMemberShadowed,
@@ -127,6 +130,8 @@ namespace Pebble {
 		ForIteratorNameTaken,
 		ForRangeMustBeNumeric,
 		FunctionLiteralsAreImplicitlyConst,
+		GuardedClassMembersOnly,
+		GuardedNonConst,
 		IfConditionNotBoolean,
 		IndexNotNumeric,
 		Internal,
