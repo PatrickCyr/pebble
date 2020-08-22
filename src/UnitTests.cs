@@ -1178,12 +1178,12 @@ namespace Pebble {
 				{"{ typealias DeletedAlias = num; 3 + true; }", ParseErrorType.TypeMismatch},
 				{"DeletedAlias deletedAlias;", ParseErrorType.TypeNotFound},
 
-				// guarded
-				{"guarded num g;", ParseErrorType.GuardedClassMembersOnly},
-				{"class GuardedFailTest { guarded const num gcn; };", ParseErrorType.GuardedNonConst},
-				{"class GuardedFailTest { static guarded const num gcn; };", ParseErrorType.GuardedNonConst},
-				{"class GuardedFailTest { guarded void G() { } };", ParseErrorType.GuardedClassMembersOnly},
-				{"class GuardedFailTest { guarded const void G() { } };", ParseErrorType.ClassMemberFunctionsConst},
+				// getonly
+				{"getonly num g;", ParseErrorType.GetonlyClassMembersOnly},
+				{"class GetonlyFailTest { getonly const num gcn; };", ParseErrorType.GetonlyNonConst},
+				{"class GetonlyFailTest { static getonly const num gcn; };", ParseErrorType.GetonlyNonConst},
+				{"class GetonlyFailTest { getonly void G() { } };", ParseErrorType.GetonlyClassMembersOnly},
+				{"class GetonlyFailTest { getonly const void G() { } };", ParseErrorType.ClassMemberFunctionsConst},
 			};
 
 			if (!engine.defaultContext.stack.PushTerminalScope("<test scope>", null)) {

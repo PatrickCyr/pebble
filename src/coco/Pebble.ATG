@@ -59,7 +59,7 @@ COMPILER Pebble
 				|| "functype" == la.val 
 				|| "funcdef" == la.val 
 				|| "static" == la.val
-				|| "guarded" == la.val)
+				|| "getonly" == la.val)
 			return true;
 		scanner.ResetPeek();
 		Token laa = scanner.Peek();
@@ -216,7 +216,7 @@ Decl<ref IExpr expr>									(. string sym = null; ITypeRef type = null; IExpr i
 		| "global"		(. mods._global = true; .)
 		| "static"		(. mods._static = true; .)
 		| "override"	(. mods._override = true; .)
-		| "guarded"		(. mods._guarded = true; .)
+		| "getonly"		(. mods._getonly = true; .)
 	}
 	( TypeSpecifier<ref type> | "void" (. type = new TypeRef("void"); .) )		(. if (null != type) type.SetConst(mods._const); .) // Unsure why I have to do the null check there, but compiler crashes on some syntax errors if I don't. (eg. "num const;")
 	Ident<ref sym> 

@@ -18,13 +18,13 @@ namespace Pebble {
 		public ITypeDef typeDef;
 		public int index;
 		public IExpr initializer;
-		public bool isGuarded;
+		public bool isGetonly;
 
-		public ClassMember(string name, ITypeDef typeDef, IExpr initializer, bool isGuarded) {
+		public ClassMember(string name, ITypeDef typeDef, IExpr initializer, bool isGetonly) {
 			this.name = name;
 			this.typeDef = typeDef;
 			this.initializer = initializer;
-			this.isGuarded = isGuarded;
+			this.isGetonly = isGetonly;
 		}
 	}
 
@@ -164,7 +164,7 @@ namespace Pebble {
 					ClassMember member = parent._fields.Get(ii);
 					bool modified = false;
 					ITypeDef resolvedType = parent.IsGeneric() ? member.typeDef.ResolveTemplateTypes(typeDef.genericTypes, ref modified) : member.typeDef;
-					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer, member.isGuarded);
+					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer, member.isGetonly);
 					newMember.index = _fields.Add(member.name, newMember);
 				}
 			}
@@ -176,7 +176,7 @@ namespace Pebble {
 					ClassMember member = parent._memberFuncs.Get(ii);
 					bool modified = false;
 					ITypeDef resolvedType = parent.IsGeneric() ? member.typeDef.ResolveTemplateTypes(typeDef.genericTypes, ref modified) : member.typeDef;
-					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer, member.isGuarded);
+					ClassMember newMember = new ClassMember(member.name, resolvedType, member.initializer, member.isGetonly);
 					newMember.index = _memberFuncs.Add(member.name, newMember);
 				}
 
@@ -242,12 +242,12 @@ namespace Pebble {
 		}
 
 		// Returns true if it succeeds, false if there was a name conflict.
-		public bool AddMember(string name, ITypeDef typeDef, IExpr initializer = null, bool isStatic = false, bool isFunctionVariable = false, bool isGuarded = false) {
+		public bool AddMember(string name, ITypeDef typeDef, IExpr initializer = null, bool isStatic = false, bool isFunctionVariable = false, bool isGetonly = false) {
 			// Fail if a member with that name already exists.
 			if (DoesFieldExist(name, SEARCH.EITHER))
 				return false;
 
-			var member = new ClassMember(name, typeDef, initializer, isGuarded);
+			var member = new ClassMember(name, typeDef, initializer, isGetonly);
 
 			// This logic is weird but works because the language currently 
 			// doesn't allow static member functions.
@@ -324,8 +324,8 @@ namespace Pebble {
 					var member = _fields.Get(name);
 					typeDef = member.typeDef;
 
-					// If this member is guarded and we are not in this class's context, the type becomes const.
-					if (null != context && member.isGuarded) {
+					// If this member is getonly and we are not in this class's context, the type becomes const.
+					if (null != context && member.isGetonly) {
 						ClassDef current = context.stack.GetCurrentClassDef();
 						if (null == current || (current != this && !current.IsChildOf(this))) {
 							typeDef = TypeFactory.GetConstVersion(typeDef);
@@ -349,8 +349,8 @@ namespace Pebble {
 						ClassMember member = def._statics.Get(name);
 						typeDef = member.typeDef;
 
-						// If this member is guarded and we are not in this class's context, the type becomes const.
-						if (null != context && member.isGuarded) {
+						// If this member is getonly and we are not in this class's context, the type becomes const.
+						if (null != context && member.isGetonly) {
 							ClassDef current = context.stack.GetCurrentClassDef();
 							if (null == current || (current != this && !current.IsChildOf(this))) {
 								typeDef = TypeFactory.GetConstVersion(typeDef);
@@ -495,7 +495,7 @@ namespace Pebble {
 		public Variable GetByName(string name) {
 			// Because this class is Value, I think that implies we are only searching for normal fields.
 			// Note: At time of writing, all calls to this are looking up fields that are hard-coded, which 
-			// I believe means they are C#-defined fields and thus will never be guarded.
+			// I believe means they are C#-defined fields and thus will never be getonly.
 			MemberRef mr = classDef.GetMemberRef(null, name, ClassDef.SEARCH.NORMAL);
 			if (mr.isInvalid) {
 				return null;

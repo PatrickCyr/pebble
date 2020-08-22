@@ -93,7 +93,7 @@ const int // types
 				|| "functype" == la.val 
 				|| "funcdef" == la.val 
 				|| "static" == la.val
-				|| "guarded" == la.val)
+				|| "getonly" == la.val)
 			return true;
 		scanner.ResetPeek();
 		Token laa = scanner.Peek();
@@ -308,7 +308,7 @@ const int // types
 				mods._override = true; 
 			} else {
 				Get();
-				mods._guarded = true; 
+				mods._getonly = true; 
 			}
 		}
 		if (la.kind == 1 || la.kind == 8) {
@@ -1149,7 +1149,7 @@ public class Errors {
 			case 14: s = "\"global\" expected"; break;
 			case 15: s = "\"static\" expected"; break;
 			case 16: s = "\"override\" expected"; break;
-			case 17: s = "\"guarded\" expected"; break;
+			case 17: s = "\"getonly\" expected"; break;
 			case 18: s = "\"<-\" expected"; break;
 			case 19: s = "\";\" expected"; break;
 			case 20: s = "\"+=\" expected"; break;

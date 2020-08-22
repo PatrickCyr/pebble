@@ -13,6 +13,9 @@ class ConstTest {
 	void F() {
 		assert (ScriptError::AssignToConst) { id = -1; }
 	}
+	
+	// ScriptError::ClassMemberFunctionsConst
+	//const void G() { }
 };
 
 ConstTest a = new {
@@ -30,64 +33,64 @@ assert(2 == a2.id);
 //functype<num(const num)> fcn;
 
 /////////////////////////////////////////////
-// guarded
+// getonly
 
-assert(ScriptError::GuardedClassMembersOnly) { guarded num g; }
-assert(ScriptError::GuardedClassMembersOnly) { guarded void F(){} }
+assert(ScriptError::GetonlyClassMembersOnly) { getonly num g; }
+assert(ScriptError::GetonlyClassMembersOnly) { getonly void F(){} }
 
-assert (ScriptError::GuardedClassMembersOnly) { guarded num nonclass; }
+assert (ScriptError::GetonlyClassMembersOnly) { getonly num nonclass; }
 
-class GuardedTest {
-	static guarded num sn = 100;
-	guarded num n = 1;
+class GetonlyTest {
+	static getonly num sn = 100;
+	getonly num n = 1;
 	
-	// These generate ScriptError::GuardedNonConst
-	//guarded const num sgc;
-	//static guarded const num sgcn;
+	// These generate ScriptError::GetonlyNonConst
+	//getonly const num sgc;
+	//static getonly const num sgcn;
 	
 	constructor {
-		GuardedTest::sn = 200;
+		GetonlyTest::sn = 200;
 		n = 2;
 	}
 	
-	GuardedTest F() {
+	GetonlyTest F() {
 		sn = 300;
 		n = 3;
 		this;
 	}
 	
-	// GuardedClassMembersOnly
-	//guarded void G() {}
+	// GetonlyClassMembersOnly
+	//getonly void G() {}
 	
 	// ClassMemberFunctionsConst
-	//guarded const void D() {}
+	//getonly const void D() {}
 };
 
-GuardedTest g = new {
+GetonlyTest g = new {
 	n = 4;
 };
 
 // Dot
 assert (ScriptError::AssignToConst) { g.n = 5; } 
-assert (ScriptError::AssignToConst) { GuardedTest::sn = 5; } 
+assert (ScriptError::AssignToConst) { GetonlyTest::sn = 5; } 
 
 // Function call.
 assert (ScriptError::AssignToConst) { g.F().n = 7; }
 
 // Index
-List<GuardedTest> lgt = new { Add(g); };
+List<GetonlyTest> lgt = new { Add(g); };
 assert (ScriptError::AssignToConst) { lgt[0].n = 9; }
 
-class GuardedChild : GuardedTest {
+class GetonlyChild : GetonlyTest {
 	constructor {
 		n = 1000;
-		GuardedTest::sn = 7;
+		GetonlyTest::sn = 7;
 	}
 };
 
-GuardedChild gc = new {
+GetonlyChild gc = new {
 	n *= 3;
-	GuardedTest::sn *= 3;
+	GetonlyTest::sn *= 3;
 };
 assert(3000 == gc.n);
-assert(21 == GuardedTest::sn);
+assert(21 == GetonlyTest::sn);

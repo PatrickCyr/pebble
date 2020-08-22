@@ -1174,26 +1174,26 @@ namespace Pebble {
 					LogCompileErr(context, ParseErrorType.OverrideNonMemberFunction, "Only class member functions can be 'override'.");
 					error = true;
 				}
-				if (declMods._guarded) {
-					LogCompileErr(context, ParseErrorType.GuardedClassMembersOnly, "Only class fields can be 'guarded'.");
+				if (declMods._getonly) {
+					LogCompileErr(context, ParseErrorType.GetonlyClassMembersOnly, "Only class fields can be 'getonly'.");
 					error = true;
 				}
 
 				// This is weird. We don't want function literals to be *specified* as const because they are
 				// *automatically* const. This code is just checking that the user didn't specify as const.
 				// We insure they are const in CreateFunctionLiteral when we create the TypeRef.
-				if (isFunctionLiteral && (declMods._const || declMods._guarded)) {
+				if (isFunctionLiteral && declMods._const) {
 					LogCompileErr(context, ParseErrorType.FunctionLiteralsAreImplicitlyConst, "Function literals are implicitly const.");
 					error = true;
 				}
 			} else {
-				if (declMods._guarded && declMods._const) {
-					LogCompileErr(context, ParseErrorType.GuardedNonConst, "Variables cannot simultaneously be const and guarded.");
+				if (declMods._getonly && declMods._const) {
+					LogCompileErr(context, ParseErrorType.GetonlyNonConst, "Variables cannot simultaneously be const and getonly.");
 					error = true;
 				}
 
-				if (isFunctionLiteral && declMods._guarded) {
-					LogCompileErr(context, ParseErrorType.GuardedClassMembersOnly, "Only class fields can be 'guarded'.");
+				if (isFunctionLiteral && declMods._getonly) {
+					LogCompileErr(context, ParseErrorType.GetonlyClassMembersOnly, "Only class fields can be 'getonly'.");
 					error = true;
 				}
 			}
@@ -2118,7 +2118,7 @@ namespace Pebble {
 						_classDef.AddFunctionOverride(set.symbol, memberTypeDef, null);
 
 					} else {
-						if (!_classDef.AddMember(set.symbol, memberTypeDef, set.value, set.declMods._static, !set.isFunctionLiteral, set.declMods._guarded)) {
+						if (!_classDef.AddMember(set.symbol, memberTypeDef, set.value, set.declMods._static, !set.isFunctionLiteral, set.declMods._getonly)) {
 							LogCompileErr(context, ParseErrorType.ClassMemberShadowed, "Cannot add field " + set.symbol + " to class " + _classDef.name + " because it would shadow another field.");
 							_preregError = true;
 							continue;

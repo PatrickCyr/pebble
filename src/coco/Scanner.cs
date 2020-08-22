@@ -472,7 +472,7 @@ public class Scanner {
 			case "global": t.kind = 14; break;
 			case "static": t.kind = 15; break;
 			case "override": t.kind = 16; break;
-			case "guarded": t.kind = 17; break;
+			case "getonly": t.kind = 17; break;
 			case "is": t.kind = 31; break;
 			case "as": t.kind = 42; break;
 			case "this": t.kind = 52; break;

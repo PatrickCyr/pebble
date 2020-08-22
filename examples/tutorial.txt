@@ -1036,12 +1036,12 @@ Debug::TimerStart();
 		// NOTE: You cannot use "is" and "as" on anything other than simple classes. No generics (like Lists) or functypes, for instance.
 	}
 	
-	// * guarded
+	// * getonly
 	{
-		// guarded class fields can only be written to by class code, but can be read by anyone
-		class GuardedTest {
+		// getonly class fields can only be written to by class code, but can be read by anyone
+		class GetonlyTest {
 			// Can assign at creation.
-			guarded num n = 1;
+			getonly num n = 1;
 			
 			void SetN(num newN) {
 				// Can assign inside class function.
@@ -1049,7 +1049,7 @@ Debug::TimerStart();
 			}
 		};
 		
-		GuardedTest gt = new {
+		GetonlyTest gt = new {
 			// Can assign inside defstructor.
 			n = 10;
 		};
