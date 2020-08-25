@@ -442,6 +442,7 @@ Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExp
 		["else" ForOrIfStat<ref falseCase> 						(. ifExpr.falseCase = falseCase; .) ]
 	| ForExpr<ref expr>
 	| ForEachExpr<ref expr>
+	| "while" '(' Expr<ref cond> ')' ForOrIfStat<ref trueCase>	(. expr = new Expr_While(this, cond, trueCase); .)
 	| Assert<ref expr>
 	| "break" ';'												(. expr = new Expr_Break(this); .)
 	| "continue" ';'											(. expr = new Expr_Continue(this); .)
@@ -473,6 +474,7 @@ EmbeddedStat<ref IExpr expr>									(. Expr_If ifExpr = null; IExpr cond = null
 		["else" ForOrIfStat<ref falseCase> 						(. ifExpr.falseCase = falseCase; .) ] 
 	| ForExpr<ref expr>
 	| ForEachExpr<ref expr>
+	| "while" '(' Expr<ref cond> ')' ForOrIfStat<ref trueCase>	(. expr = new Expr_While(this, cond, trueCase); .)
 	| Assert<ref expr>
 	| "break" ';'												(. expr = new Expr_Break(this); .)
 	| "continue" ';'											(. expr = new Expr_Continue(this); .)
@@ -501,6 +503,7 @@ ForOrIfStat<ref IExpr expr>										(. Expr_If ifExpr = null; IExpr cond = null
 		["else" EmbeddedStat<ref falseCase> 					(. ifExpr.falseCase = falseCase; .) ] 
 	| ForExpr<ref expr>
 	| ForEachExpr<ref expr>
+	| "while" '(' Expr<ref cond> ')' ForOrIfStat<ref trueCase>	(. expr = new Expr_While(this, cond, trueCase); .)
 	| "break" ';'												(. expr = new Expr_Break(this); .)
 	| "continue" ';'											(. expr = new Expr_Continue(this); .)
 	| "return" [ Expr<ref cond> ] ';'							(. expr = new Expr_Return(this, cond); .)

@@ -567,10 +567,10 @@ namespace Pebble {
 			return _varStack[_callStack[_callCount + stackRef.callIndexOffset].varStackStart + stackRef.varIndex];
 		}
 
-		public bool InForStatement() {
+		public bool InForOrWhileStatement() {
 			for (int ii = _callCount - 1; ii >= 0; --ii) {
 				string name = _callStack[ii].name;
-				if (name == Pb.FOR_BLOCK_NAME || name == Pb.FOREACH_BLOCK_NAME) {
+				if (name == Pb.FOR_BLOCK_NAME || name == Pb.FOREACH_BLOCK_NAME || name == Pb.WHILE_BLOCK_NAME) {
 					return true;
 				} else if (_callStack[ii].terminal)
 					break;

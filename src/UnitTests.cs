@@ -307,6 +307,16 @@ namespace Pebble {
 				{"{ num count = 0; for (i = 0.4, 0.6, 1.4) { ++count; } count; }", 2},
 				{"{ num count = 0; for (i = -0.4, -9.1, -1.6) { ++count; } count; }", 5},
 
+				// while
+				// -- break
+				{"{ num w = 3; while (--w > 0) { if (w ==1) break; } w; }", 1},
+				// -- continue
+				{"{ num ws = 0; num w = 3; while (--w > 0) { if (w == 1) continue; ++ws; } ws; }", 1},
+				// -- blockless
+				{"{ num w = 3; while (w > 0) --w; w; }", 0},
+				// -- return within while within function
+				{"{ num WTest() { num w = 3; while (--w > 0) return w; return w; } WTest(); }", 2},
+
 				// Function type
 				{"{ functype<bool(string, string)> mystreqi = String::EqualsI; mystreqi(\"hi\", \"HI\"); }", true},
 				{"{ num numFunc(num a, num b) { a + b; } numFunc(3, 7); }", 10},
@@ -316,6 +326,7 @@ namespace Pebble {
 				//{"function num poop() { num x = 3; };", false},
 				// -- function return type doesn't have to match exactly
 				{"{ functype<A()> aFunc; B BFunc() { new B; } aFunc = BFunc; aFunc().name; }", "B"},
+
 
 
 				// *** Lists
@@ -1087,6 +1098,10 @@ namespace Pebble {
 				// -- cannot foreach on any type other than an enum.
 				{"{ foreach (a, b in A) {} }", ParseErrorType.ForEachInvalidType},
 				{"{ foreach (a, b in n) {} }", ParseErrorType.ForEachInvalidCollection},
+
+				// while
+				// -- return without call
+				{"while(false) return;", ParseErrorType.ReturnNotInCall},
 
 				// Break & continue
 				{"break;", ParseErrorType.BreakNotInFor},

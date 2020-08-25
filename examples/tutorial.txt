@@ -661,6 +661,30 @@ Debug::TimerStart();
 		}
 	}
 	
+	// * while loops
+	{
+		// while is a way to perform a loop so long as a condition is met.
+		num GetFibonnaci(num index) {
+			if (0 == index)
+				return 0;
+		
+			num n0 = 0;
+			num n1 = 1;
+			while (--index > 0) {
+				num n2 = n0 + n1;
+				n0 = n1;
+				n1 = n2;
+			}
+			
+			return n1;
+		}
+		
+		List<num> expected = new { Add(0, 1, 1, 2, 3, 5, 8, 13); };
+		foreach (ix, expectation in expected) {
+			assert(GetFibonnaci(ix) == expectation);
+		}
+	}
+	
 	// * assert : sanity test.
 	{
 		// assert is to help users to create sanity tests for their code. asserts throw an error if something is not as expected.

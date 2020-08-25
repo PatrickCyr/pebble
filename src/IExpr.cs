@@ -1351,6 +1351,7 @@ namespace Pebble {
 
 			return SetType(IntrinsicTypeDefs.BOOL);
 		}
+
 		public override object Evaluate(ExecContext context) {
 			Pb.Assert(0 == context.control.flags);
 
@@ -1358,6 +1359,7 @@ namespace Pebble {
 			if (context.IsRuntimeErrorSet())
 				return null;
 
+			//! do i need to check for errors here?
 			if ((Boolean)ret == true) {
 				trueCase.Evaluate(context);
 			} else {
@@ -1828,6 +1830,90 @@ namespace Pebble {
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
+	// While
+
+	public class Expr_While : IExpr {
+		public IExpr condition { get { return nodes[0]; } }
+		public IExpr body { get { return nodes[1]; } }
+
+		public Expr_While(Parser parser, IExpr cond, IExpr body) : base(parser) {
+			nodes = new List<IExpr>();
+			nodes.Add(cond);
+			nodes.Add(body);
+		}
+
+		public override string ToString() {
+			return "WHILE(" + condition + ") {" + body + "}";
+		}
+
+		public override string MyToString(string indent) {
+			return indent + "WHILE(" + condition.MyToString(indent + "  ") + ") {\n" + body.MyToString(indent + "  ") + "}";
+		}
+
+		public override bool RegisterTypes(ExecContext context, ref bool error) {
+			return body.RegisterTypes(context, ref error);
+		}
+
+		override public ITypeDef TypeCheck(ExecContext context, ref bool error) {
+
+			if (!context.stack.PushBlock(Pb.WHILE_BLOCK_NAME, null)) {
+				LogCompileErr(context, ParseErrorType.StackOverflow, "For: stack overflow pushing block.");
+				error = true;
+				return null;
+			}
+			{
+				ITypeDef conditionType = condition.TypeCheck(context, ref error);
+				if (!IntrinsicTypeDefs.BOOL.Equals(conditionType)) {
+					LogCompileErr(context, ParseErrorType.WhileConditionNotBoolean, "While: condition type (" + conditionType + ") isn't boolean.");
+					error = true;
+				}
+			
+				body.TypeCheck(context, ref error);
+			}
+			context.stack.PopScope();
+
+			return SetType(IntrinsicTypeDefs.BOOL);
+		}
+
+		public override object Evaluate(ExecContext context) {
+			Pb.Assert(0 == context.control.flags);
+
+			if (!context.stack.PushBlock(Pb.WHILE_BLOCK_NAME, null)) {
+				context.SetRuntimeError(RuntimeErrorType.StackOverflow, "Stack overflow pushing 'while' block.");
+				return null;
+			}
+
+			object ret = condition.Evaluate(context);
+			if (context.IsRuntimeErrorSet())
+				return null;
+
+			while ((bool) ret) {
+				body.Evaluate(context);
+				if (context.IsRuntimeErrorSet())
+					return null;
+				if (0 != (context.control.flags & ControlInfo.CONTINUE))
+					context.control.flags -= ControlInfo.CONTINUE;
+				if (0 != (context.control.flags & ControlInfo.BREAK)) {
+					context.control.flags -= ControlInfo.BREAK;
+					break;
+				}
+				if (0 != (context.control.flags & ControlInfo.RETURN)) {
+					// Return isn't for us, so just break out.
+					break;
+				}
+
+				ret = condition.Evaluate(context);
+				if (context.IsRuntimeErrorSet())
+					return null;
+			}
+
+			context.stack.PopScope();
+
+			return false;
+		}
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
 	// Break
 
 	public class Expr_Break : IExpr {
@@ -1844,7 +1930,7 @@ namespace Pebble {
 
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
 
-			bool inAFor = context.stack.InForStatement();
+			bool inAFor = context.stack.InForOrWhileStatement();
 			if (!inAFor) {
 				LogCompileErr(context, ParseErrorType.BreakNotInFor, "Break statement not in an enclosing for loop.");
 				error = true;
@@ -1878,7 +1964,7 @@ namespace Pebble {
 
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
 
-			bool inAFor = context.stack.InForStatement();
+			bool inAFor = context.stack.InForOrWhileStatement();
 			if (!inAFor) {
 				LogCompileErr(context, ParseErrorType.ContinueNotInFor, "Continue statement not in an enclosing for loop.");
 				error = true;

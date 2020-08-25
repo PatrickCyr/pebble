@@ -10,8 +10,10 @@ using System.Text;
 
 namespace Pebble {
 	class Pb {
+		// TODO: This is terrible.
 		public const string FOR_BLOCK_NAME = "__for";
 		public const string FOREACH_BLOCK_NAME = "__foreach";
+		public const string WHILE_BLOCK_NAME = "__while";
 
 		public static void Assert(bool condition, string msg = "") {
 			if (!condition) {
@@ -54,6 +56,7 @@ namespace Pebble {
 			"true",
 			"typealias",
 			"uninstantiable",
+			"while",
 		};
 	}
 
@@ -175,6 +178,7 @@ namespace Pebble {
 		TypeNotIndexable,
 		TypesUnrelated,
 		VoidFunctionsOnly,
+		WhileConditionNotBoolean,
 	}
 
 	public class ParseErrorInst {

@@ -29,7 +29,7 @@ public class Parser {
 	public const int _ident = 1;
 	public const int _number = 2;
 	public const int _StringLiteral = 3;
-	public const int maxT = 75;
+	public const int maxT = 76;
 
 	// *** constants end *********************************************************
 
@@ -200,7 +200,7 @@ const int // types
 			FunctionType(ref type);
 		} else if (la.kind == 1) {
 			TypeSpecifierNoFunc(ref type);
-		} else SynErr(76);
+		} else SynErr(77);
 		if (isConst) type.SetConst(true); 
 	}
 
@@ -213,7 +213,7 @@ const int // types
 		} else if (la.kind == 9) {
 			Get();
 			retType = new TypeRef("void"); 
-		} else SynErr(77);
+		} else SynErr(78);
 		Expect(10);
 		if (la.kind == 1 || la.kind == 8) {
 			FunctionTypeArg(ref args, ref argHasDefaults);
@@ -288,7 +288,7 @@ const int // types
 		} else if (la.kind == 3) {
 			Get();
 			expr = new Expr_Literal(this, t.val.Substring(1, t.val.Length - 2), IntrinsicTypeDefs.STRING); 
-		} else SynErr(78);
+		} else SynErr(79);
 	}
 
 	void Decl(ref IExpr expr) {
@@ -316,7 +316,7 @@ const int // types
 		} else if (la.kind == 9) {
 			Get();
 			type = new TypeRef("void"); 
-		} else SynErr(79);
+		} else SynErr(80);
 		if (null != type) type.SetConst(mods._const); 
 		Ident(ref sym);
 		if (la.kind == 12 || la.kind == 18 || la.kind == 19) {
@@ -348,7 +348,7 @@ const int // types
 			Expect(11);
 			EmbeddedStatementBlock(ref body);
 			expr = Expr_Set.CreateFunctionLiteral(this, type, sym, argTypes, defaultValues, argNames, body, mods); 
-		} else SynErr(80);
+		} else SynErr(81);
 	}
 
 	void Ident(ref string id) {
@@ -618,7 +618,7 @@ const int // types
 			Get();
 			CastExpr(ref expr);
 			expr = new Expr_UnOp(this, Expr_UnOp.OP.NOT, expr); 
-		} else SynErr(81);
+		} else SynErr(82);
 	}
 
 	void PostfixExpr(ref IExpr expr) {
@@ -687,7 +687,7 @@ const int // types
 				EmbeddedStatementBlock(ref initializer);
 			}
 			expr = new Expr_New(this, valType, initializer); 
-		} else SynErr(82);
+		} else SynErr(83);
 	}
 
 	void ArgExprList(ref ExprList args) {
@@ -755,17 +755,26 @@ const int // types
 		}
 		case 72: {
 			Get();
-			Expect(19);
-			expr = new Expr_Break(this); 
+			Expect(10);
+			Expr(ref cond);
+			Expect(11);
+			ForOrIfStat(ref trueCase);
+			expr = new Expr_While(this, cond, trueCase); 
 			break;
 		}
 		case 73: {
 			Get();
 			Expect(19);
-			expr = new Expr_Continue(this); 
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 74: {
+			Get();
+			Expect(19);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 75: {
 			Get();
 			if (StartOf(10)) {
 				Expr(ref cond);
@@ -778,7 +787,7 @@ const int // types
 			Get();
 			break;
 		}
-		default: SynErr(83); break;
+		default: SynErr(84); break;
 		}
 	}
 
@@ -887,7 +896,7 @@ const int // types
 			StatBlock(ref block);
 		} else if (la.kind == 19) {
 			Get();
-		} else SynErr(84);
+		} else SynErr(85);
 		#if PEBBLE_ASSERTOFF
 			expr = new Expr_Literal(this, true, IntrinsicTypeDefs.BOOL);
 		#else
@@ -946,23 +955,32 @@ const int // types
 			ForEachExpr(ref expr);
 			break;
 		}
-		case 69: {
-			Assert(ref expr);
-			break;
-		}
 		case 72: {
 			Get();
-			Expect(19);
-			expr = new Expr_Break(this); 
+			Expect(10);
+			Expr(ref cond);
+			Expect(11);
+			ForOrIfStat(ref trueCase);
+			expr = new Expr_While(this, cond, trueCase); 
+			break;
+		}
+		case 69: {
+			Assert(ref expr);
 			break;
 		}
 		case 73: {
 			Get();
 			Expect(19);
-			expr = new Expr_Continue(this); 
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 74: {
+			Get();
+			Expect(19);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 75: {
 			Get();
 			if (StartOf(10)) {
 				Expr(ref cond);
@@ -989,7 +1007,7 @@ const int // types
 			Get();
 			break;
 		}
-		default: SynErr(85); break;
+		default: SynErr(86); break;
 		}
 	}
 
@@ -1031,23 +1049,32 @@ const int // types
 			ForEachExpr(ref expr);
 			break;
 		}
-		case 69: {
-			Assert(ref expr);
-			break;
-		}
 		case 72: {
 			Get();
-			Expect(19);
-			expr = new Expr_Break(this); 
+			Expect(10);
+			Expr(ref cond);
+			Expect(11);
+			ForOrIfStat(ref trueCase);
+			expr = new Expr_While(this, cond, trueCase); 
+			break;
+		}
+		case 69: {
+			Assert(ref expr);
 			break;
 		}
 		case 73: {
 			Get();
 			Expect(19);
-			expr = new Expr_Continue(this); 
+			expr = new Expr_Break(this); 
 			break;
 		}
 		case 74: {
+			Get();
+			Expect(19);
+			expr = new Expr_Continue(this); 
+			break;
+		}
+		case 75: {
 			Get();
 			if (StartOf(10)) {
 				Expr(ref cond);
@@ -1060,7 +1087,7 @@ const int // types
 			Get();
 			break;
 		}
-		default: SynErr(86); break;
+		default: SynErr(87); break;
 		}
 	}
 
@@ -1102,21 +1129,21 @@ const int // types
 	
 	static readonly bool[,] set = {
 		// *** initialization *************************************************
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_T,_x,_x, _x,_T,_T,_x, _T,_T,_T,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_T,_T,_T, _T,_T,_x,_x, _T,_T,_T,_x, _T,_T,_T,_x, _x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_T,_x,_x, _x,_T,_T,_x, _T,_T,_T,_T, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _T,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _T,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_T,_T,_T, _T,_T,_x,_x, _T,_T,_T,_x, _T,_T,_T,_T, _x,_x}
 
 		// *** initialization end *********************************************
 	};
@@ -1204,21 +1231,22 @@ public class Errors {
 			case 69: s = "\"assert\" expected"; break;
 			case 70: s = "\"if\" expected"; break;
 			case 71: s = "\"else\" expected"; break;
-			case 72: s = "\"break\" expected"; break;
-			case 73: s = "\"continue\" expected"; break;
-			case 74: s = "\"return\" expected"; break;
-			case 75: s = "??? expected"; break;
-			case 76: s = "invalid TypeSpecifier"; break;
-			case 77: s = "invalid FunctionType"; break;
-			case 78: s = "invalid Literal"; break;
-			case 79: s = "invalid Decl"; break;
+			case 72: s = "\"while\" expected"; break;
+			case 73: s = "\"break\" expected"; break;
+			case 74: s = "\"continue\" expected"; break;
+			case 75: s = "\"return\" expected"; break;
+			case 76: s = "??? expected"; break;
+			case 77: s = "invalid TypeSpecifier"; break;
+			case 78: s = "invalid FunctionType"; break;
+			case 79: s = "invalid Literal"; break;
 			case 80: s = "invalid Decl"; break;
-			case 81: s = "invalid UnaryPost"; break;
-			case 82: s = "invalid Primary"; break;
-			case 83: s = "invalid ForOrIfStat"; break;
-			case 84: s = "invalid Assert"; break;
-			case 85: s = "invalid Stat"; break;
-			case 86: s = "invalid EmbeddedStat"; break;
+			case 81: s = "invalid Decl"; break;
+			case 82: s = "invalid UnaryPost"; break;
+			case 83: s = "invalid Primary"; break;
+			case 84: s = "invalid ForOrIfStat"; break;
+			case 85: s = "invalid Assert"; break;
+			case 86: s = "invalid Stat"; break;
+			case 87: s = "invalid EmbeddedStat"; break;
 
 			// *** errors end *************************************************
 			default: s = "error " + n; break;
