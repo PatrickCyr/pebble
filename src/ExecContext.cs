@@ -200,7 +200,7 @@ namespace Pebble {
 		// set uses this to 1) check to see if symbol already exists, and 2) caches the variable for use during evaluate
 		//		set can also be used to set global variables.
 		// for uses this to 1) check to make sure symbol doesn't already exist, 2) push var on the stack for type checking
-		public VarStackRef CreateTemp(string symbol, ITypeDef type, bool global = false, bool doesntCollideWithGlobal = false) {
+		public VarStackRef CreateTemp(string symbol, ITypeDef type, bool global = false, bool doesntCollideWithGlobal = false, bool unique = false) {
 			if (null != GetTypeByName(symbol))
 				return new VarStackRef(false);
 
@@ -214,11 +214,15 @@ namespace Pebble {
 					return new VarStackRef(false);
 			}
 
-			return stack.AddVariable(symbol, global, type, null);
+			if (unique) {
+				Variable var = new Variable(symbol, type, null);
+				return stack.AddExistingVariable(symbol, global, var);
+			} else
+				return stack.AddVariable(symbol, global, type, null);
 		}
 
 		public bool CreateGlobal(string symbol, ITypeDef type, object value = null) {
-			Variable existing = stack.GetVariable(symbol, true); // existence check
+			Variable existing = stack.GetGlobalVariable(symbol); // existence check
 			if (null != existing)
 				return false;
 
@@ -232,6 +236,10 @@ namespace Pebble {
 		public Variable CreateEval(string symbol, ITypeDef type, object value = null, bool isGlobal = false) {
 			VarStackRef vsr = stack.AddVariable(symbol, isGlobal, type, value);
 			return stack.GetVarAtIndex(vsr);
+		}
+
+		public void CreateWithExistingVariable(string symbol, Variable variable, bool global) {
+			stack.AddExistingVariable(symbol, global, variable);
 		}
 
 

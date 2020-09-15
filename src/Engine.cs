@@ -72,7 +72,7 @@ namespace Pebble {
 			no longer of the Variable's type is surely disastrous.
 		*/
 		public Variable GetGlobalVariable(string variableName) {
-			return defaultContext.stack.GetVariable(variableName, true);
+			return defaultContext.stack.GetGlobalVariable(variableName);
 		}
 
 		/* Todo, maybe: this could be handy.

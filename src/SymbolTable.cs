@@ -10,14 +10,15 @@ namespace Pebble {
 
 	/*	
 	Represents a variable.  In Pebble, variables have static type, meaning their
-	type can never change.  However, they may point to a value of a different type,
-	particularly when it comes to classes and child classes.
+	type can never change.  However, they may point to a values of a different types
+	when it comes to classes and child classes.
 	*/
 	public class Variable {
 		// Note that none of these are readonly because we reuse Variable instances.
 		public string name;
 		public ITypeDef type;
 		public object value;
+		public bool unique;
 
 		public Variable(string nameIn, ITypeDef typeIn, object valueIn = null) {
 			Set(nameIn, typeIn, valueIn);
@@ -28,6 +29,7 @@ namespace Pebble {
 			name = nameIn;
 			type = typeIn;
 			value = valueIn;
+			unique = false;
 			return this;
 		}
 
@@ -153,30 +155,35 @@ namespace Pebble {
 		public readonly bool isGlobal;
 		public readonly MemberRef memberRef;
 		public readonly ITypeDef typeDef;
+		// This is for references to unique variables, like globals.
+		public readonly Variable variable;
 
 		// This creates an invalid VarStackRef.
-		public VarStackRef(bool invalid) {
-			Pb.Assert(false == invalid);
+		public VarStackRef(bool valid) {
+			Pb.Assert(false == valid);
 			isValid = false;
 			callIndexOffset = -9000;
 			varIndex = -1;
 			isGlobal = false;
 			memberRef = MemberRef.invalid;
 			typeDef = null;
+			variable = null;
 		}
 
-		// Use this one for globals.
-		// Note: could just save the Variable.
-		public VarStackRef(ITypeDef typeDefIn, int ix) {
+		// This is for uniques, both globals and those on the stack.
+		public VarStackRef(Variable uniqueVariable, bool global) {
 			isValid = true;
-			typeDef = typeDefIn;
-			callIndexOffset = 9000;
-			varIndex = ix;
+			callIndexOffset = -9000;
+			varIndex = -1;
+			isGlobal = global;
 			memberRef = MemberRef.invalid;
-			isGlobal = true;
+			typeDef = uniqueVariable.type;
+			variable = uniqueVariable;
+			//!Pb.Assert(variable.persistent == true);
+			variable.unique = true;
 		}
 
-		// Use this one for variables on the varStack.
+		// Use this one for non-unique variables on the varStack.
 		public VarStackRef(ITypeDef typeDefIn, int callIx, int ix) {
 			isValid = true;
 			typeDef = typeDefIn;
@@ -184,10 +191,11 @@ namespace Pebble {
 			varIndex = ix;
 			memberRef = MemberRef.invalid;
 			isGlobal = false;
+			variable = null;
 		}
 
 		// Use this one for class members, both regular and static.
-		// Note: could just save the variable.
+		//! statics are unique but we aren't referencing them that way atm.
 		public VarStackRef(ITypeDef typeDefIn, int callIx, MemberRef memRef) {
 			isValid = true;
 			typeDef = typeDefIn;
@@ -195,11 +203,14 @@ namespace Pebble {
 			varIndex = -1;
 			memberRef = memRef;
 			isGlobal = false;
+			variable = null;
 		}
 
 		public override string ToString() {
 			if (!isValid)
 				return "<invalid>";
+			else if (null != variable)
+				return "unique[" + variable.type + " " + variable.name + "]";
 			else if (isGlobal)
 				return "global[" + varIndex + "]";
 			else
@@ -248,13 +259,9 @@ namespace Pebble {
 		}
 		*/
 
-		public Variable GetVariable(string symbol, bool global) {
-			if (global)
-				return _globals.Get(symbol);
-
-			// unsure about this null
-			VarStackRef vsr = GetVarIndexByName(null, symbol);
-			return GetVarAtIndex(vsr);
+		// Note that in the specific case of global variables we can look them up without a context.
+		public Variable GetGlobalVariable(string symbol) {
+			return _globals.Get(symbol);
 		}
 
 		public VariableStack() {
@@ -317,6 +324,8 @@ namespace Pebble {
 		}
 
 		private string GetVariableString(Variable var) {
+			if (null == var)
+				return "<null>";
 			return "  " + var.type.ToString() + " " + var.name + " = " + CoreLib.ValueToString(null, var.value, true) + "\n";
 		}
 
@@ -413,8 +422,14 @@ namespace Pebble {
 			int lastToRemove = _callStack[_callCount - 1].varStackStart;
 			while (_varCount > lastToRemove) {
 				Variable var = _varStack[_varCount - 1];
-				var.name = "<deleted>";
-				var.value = null;
+				if (null != var) {
+					if (var.unique)
+						_varStack[_varCount - 1] = null;
+					else {
+						var.name = "<deleted>";
+						var.value = null;
+					}
+				}
 				--_varCount;
 			}
 
@@ -437,8 +452,8 @@ namespace Pebble {
 
 			if (global) {
 				var = new Variable(name, type, value);
-				int ix = _globals.Set(name, var);
-				return new VarStackRef(type, ix);
+				_globals.Set(name, var);
+				return new VarStackRef(var, true);
 			}
 			
 			if (_varStack.Count == _varCount) {
@@ -446,7 +461,11 @@ namespace Pebble {
 				_varStack.Add(var);
 			} else {
 				var = _varStack[_varCount];
-				var.Set(name, type, value);
+				if (null == var) {
+					var = new Variable(name, type, value);
+					_varStack[_varCount] = var;
+				} else
+					var.Set(name, type, value);
 			}
 			++_varCount;
 
@@ -455,6 +474,26 @@ namespace Pebble {
 #endif
 
 			return new VarStackRef(type, -1, _varCount - _callStack[_callCount - 1].varStackStart - 1);
+		}
+
+		public VarStackRef AddExistingVariable(string name, bool global, Variable variable) {
+			if (global) {
+				_globals.Set(name, variable);
+				return new VarStackRef(variable, global);
+			}
+
+			if (_varStack.Count == _varCount) {
+				_varStack.Add(variable);
+			} else {
+				_varStack[_varCount] = variable;
+			}
+			++_varCount;
+
+#if PEBBLE_TRACESTACK
+			TraceLog("AddExistingVariable " + variable.type.ToString() + " " + name + "[" + (_varCount - 1) + "] = <" + variable.value + ">");
+#endif
+
+			return new VarStackRef(variable, global);
 		}
 
 		public ClassDef GetCurrentClassDef(bool noStatics = false) {
@@ -519,8 +558,13 @@ namespace Pebble {
 
 				// Otherwise, search the variable stack for it.
 				while (varIx >= scope.varStackStart) {
-					if (_varStack[varIx].name == name)
-						return new VarStackRef(_varStack[varIx].type, callIx - _callCount, varIx - scope.varStackStart);
+					if (null != _varStack[varIx] && _varStack[varIx].name == name) {
+						Variable var = _varStack[varIx];
+						if (var.unique)
+							return new VarStackRef(var, false);
+						else
+							return new VarStackRef(_varStack[varIx].type, callIx - _callCount, varIx - scope.varStackStart);
+					}
 					--varIx;
 				}
 
@@ -532,7 +576,7 @@ namespace Pebble {
 			int globIx = _globals.GetIndex(name);
 			if (globIx >= 0) {
 				Variable var = _globals.Get(globIx);
-				return new VarStackRef(var.type, globIx);
+				return new VarStackRef(var, true);
 			}
 
 			return new VarStackRef(false);
@@ -542,16 +586,20 @@ namespace Pebble {
 			int globIx = _globals.GetIndex(name);
 			if (globIx >= 0) {
 				Variable var = _globals.Get(globIx);
-				return new VarStackRef(var.type, globIx);
+				return new VarStackRef(var, true);
 			}
 
 			return new VarStackRef(false);
 		}
 
 		// BIG IMPORTANT FUNCTION.
+		// This is how VarStackRefs are decoded and the Variables they referenced are returned.
 		public Variable GetVarAtIndex(VarStackRef stackRef) {
 			if (!stackRef.isValid)
 				return null;
+
+			if (null != stackRef.variable)
+				return stackRef.variable;
 
 			if (!stackRef.memberRef.isInvalid) {
 				if (stackRef.memberRef.memberType == ClassDef.MemberType.NORMAL) {
@@ -602,8 +650,14 @@ namespace Pebble {
 
 			while (_varCount > state.varCount) {
 				Variable var = _varStack[_varCount - 1];
-				var.value = null;
-				var.name = "<deleted>";
+				if (null != var) {
+					if (var.unique)
+						_varStack[_varCount - 1] = null;
+					else {
+						var.value = null;
+						var.name = "<deleted>";
+					}
+				}
 				--_varCount;
 			}
 

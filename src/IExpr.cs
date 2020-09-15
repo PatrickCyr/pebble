@@ -62,6 +62,8 @@ namespace Pebble {
 
 		protected void LogCompileErr(ExecContext context, ParseErrorType error, string msg) {
 			context.engine.LogCompileError(error, GetFileLineString() + error.ToString() + ": " + msg);
+
+			//context.engine.Log(context.ToString());
 		}
 
 		protected void SetRuntimeError(ExecContext context, RuntimeErrorType error, string msg) {
@@ -1087,13 +1089,15 @@ namespace Pebble {
 		public ITypeRef typeRef;
 		public string symbol;
 		public DeclMods declMods;
-		public bool createTemp = true;
+		public bool isClassField = false;
 		public bool typeCheckValue = true;
 		public ClassDef owningClass = null;
 		public bool isFunctionLiteral = false;
 		public ITypeDef typeDef;
 		protected bool _funcInitError = false;
 		protected bool _insufficientDefaults = false;
+
+		private Variable _uniqueVar = null;
 
 		// This is called by the parser.
 		public static IExpr CreateFunctionLiteral(Parser parser, ITypeRef retType, string sym, List<ITypeRef> argTypes, List<Expr_Literal> defaultValues, List<string> argNames, IExpr body, DeclMods mods) {
@@ -1231,17 +1235,7 @@ namespace Pebble {
 				}
 			}
 
-			// This is to handle scope initializers when parent scope already has
-			// a variable with that name.
-			// Later comment: but this makes it so you can create a global with the same name as a local variable!
-			bool canCreateSymbol;
-			//if (global)
-			//	canCreateSymbol = null == context.GetGlobal(symbol.GetName());
-			//else
-			//	canCreateSymbol = context.CanCreateSymbol(symbol.GetName());
-
-			canCreateSymbol = declMods._override || context.stack.IsSymbolAvailable(context, symbol, null != owningClass);
-
+			bool canCreateSymbol = declMods._override || context.stack.IsSymbolAvailable(context, symbol, null != owningClass);
 			if (!canCreateSymbol) {
 				LogCompileErr(context, ParseErrorType.SymbolAlreadyDeclared, "Set: symbol (" + symbol + ") already declared.");
 				error = true;
@@ -1259,11 +1253,20 @@ namespace Pebble {
 				}
 			}
 
-			if (createTemp) {
-				if (!context.CreateTemp(symbol, typeDef, declMods._global).isValid) {
+			if (!isClassField) {
+				// If we are not in a function and not a class field, then we 
+				// are a single-instance variable, and we should save the instance right now.
+				TypeDef_Function funcType = context.stack.GetEnclosingFunctionType();
+				bool unique = null == funcType;
+
+				VarStackRef vsr = context.CreateTemp(symbol, typeDef, declMods._global, false, unique);
+				if (!vsr.isValid) {
 					LogCompileErr(context, ParseErrorType.SymbolAlreadyDeclared, "Set: Cannot create variable with name (" + symbol + ").");
 					error = true;
 				}
+
+				if (unique)
+					_uniqueVar = vsr.variable;
 			}
 
 			return SetType(typeDef);
@@ -1286,7 +1289,16 @@ namespace Pebble {
 					return null;
 			}
 
-			Variable valueRef = context.CreateEval(symbol, typeDef, val, declMods._global);
+			Variable valueRef;
+			if (null == _uniqueVar)
+				valueRef = context.CreateEval(symbol, typeDef, val, declMods._global);
+			else {
+				// Push the variable back onto the stack. Don't need to do this for globals.
+				if (!declMods._global)
+					context.CreateWithExistingVariable(symbol, _uniqueVar, declMods._global);
+				valueRef = _uniqueVar;
+				valueRef.value = val;
+			}
 			return valueRef;
 		}
 
@@ -2111,7 +2123,7 @@ namespace Pebble {
 					set.owningClass = _classDef;
 					// This line is very important: it tells Expr_Set.TypeCheck to NOT check the value.
 					set.typeCheckValue = false;
-					set.createTemp = false;
+					set.isClassField = true;
 
 					if (set.declMods._global) {
 						LogCompileErr(context, ParseErrorType.ClassMembersCannotBeGlobal, "Class members cannot be 'global'.");
