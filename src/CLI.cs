@@ -89,8 +89,8 @@ namespace PebbleCLI {
 				}
 				initScript += "};";
 
-				engine.RunScript(initScript, ref errors, false);
-				if (errors.Count > 0) {
+				ScriptResult result = engine.RunScript(initScript, false);
+				if (!result.success) { 
 					Console.WriteLine("INTERNAL ERROR creating passthrough arguments array.");
 					return;
 				}
@@ -108,11 +108,11 @@ namespace PebbleCLI {
 				string fileContents = File.ReadAllText(filename);
 				errors.Clear();
 
-				object ret = engine.RunScript(fileContents, ref errors, optVerbose, filename);
-				if (ret is RuntimeErrorInst) {
-					Console.WriteLine("Runtime Error: " + ((RuntimeErrorInst)ret).ToString());
-				} else if (errors.Count == 0) {
-					Console.WriteLine("Returned: " + CoreLib.ValueToString(engine.defaultContext, ret, true));
+				ScriptResult result = engine.RunScript(fileContents, optVerbose, filename);
+				if (result.success)
+					Console.WriteLine("Returned: " + CoreLib.ValueToString(engine.defaultContext, result.value, true));
+				else { 
+					Console.WriteLine(result);
 				}
 			}
 
@@ -137,12 +137,12 @@ namespace PebbleCLI {
 						Console.WriteLine(line);
 					}
 
-					object ret = engine.RunInteractiveScript(line, ref errors, optVerbose);
-					if (errors.Count == 0 && !(ret is RuntimeErrorInst)) {
-						if (null == ret) {
+					ScriptResult result = engine.RunInteractiveScript(line, optVerbose);
+					if (result.success) { 
+						if (null == result.value) {
 							Console.WriteLine("<null>");
 						} else {
-							Console.WriteLine(CoreLib.ValueToString(engine.defaultContext, ret, true));
+							Console.WriteLine(CoreLib.ValueToString(engine.defaultContext, result.value, true));
 						}
 					}
 				}

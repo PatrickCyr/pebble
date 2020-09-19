@@ -15,6 +15,31 @@ namespace Pebble {
 		bool RunTests(Engine engine, bool verbose);
 	};
 
+	// Returns the result of executing a script, or the errors that occurred during parsing or evaluation.
+	public class ScriptResult {
+		public object value;
+		public bool success;
+		public List<ParseErrorInst> parseErrors;
+		public RuntimeErrorInst runtimeError;
+
+		public override string ToString() {
+			if (success)
+				return "success";
+
+			string msg = "";
+			if (null != parseErrors) {
+				foreach (var pei in parseErrors) {
+					msg += pei.ToString() + "\n";
+				}
+			}
+
+			if (null != runtimeError)
+				msg += runtimeError.ToString();
+
+			return msg;
+		}
+	};
+
 	/*
 	 * Instantiate an instance of this to run Pebble scripts.
 	 */
@@ -122,23 +147,29 @@ namespace Pebble {
 		 * gone. This should be the default behavior, with the notable exception of CLI 
 		 * interactive mode.
 		*/
-		public object RunScript(string s, ref List<ParseErrorInst> errors, bool verbose = false, string filename = null) {
+		public ScriptResult RunScript(string s, bool verbose = false, string filename = null, bool hardTerminal = false) {
 			string scriptName = filename != null ? filename : _GetScriptNameFromScript(s);
-			return _RunScript(scriptName, s, ref errors, verbose, true);
+			return _RunScript(scriptName, s, verbose, true, hardTerminal);
 		}
 
 		// This version runs a script without creating a temp scope, so any local variables
 		// made persist on the stack afterwards. Ideal for interactive mode.
-		public object RunInteractiveScript(string s, ref List<ParseErrorInst> errors, bool verbose = false) {
-			return _RunScript(null, s, ref errors, verbose, false);
+		public ScriptResult RunInteractiveScript(string s, bool verbose = false) {
+			return _RunScript(null, s, verbose, false);
 		}
 
-		private object _RunScript(string scriptName, string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
-			IExpr expr = _Parse(scriptName, s, ref errors, verbose, createTempScope);
-			if (null == expr)
-				return null;
+		private ScriptResult _RunScript(string scriptName, string s, bool verbose = false, bool createTempScope = true, bool hardTerminal = false) {
+			List<ParseErrorInst> errors = new List<ParseErrorInst>();
+			IExpr expr = _Parse(scriptName, s, ref errors, verbose, createTempScope, hardTerminal);
+			if (null == expr) {
+				ScriptResult result = new ScriptResult();
+				result.success = false;
+				if (errors.Count > 0)
+					result.parseErrors = errors;
+				return result;
+			}
 
-			return _EvaluateExpression(expr, createTempScope);
+			return _EvaluateExpression(expr, createTempScope, hardTerminal);
 		}		
 
 		/**
@@ -155,7 +186,7 @@ namespace Pebble {
 			return _Parse(sn, s, ref errors, verbose, true);
 		}
 
-		private IExpr _Parse(string scriptName, string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true) {
+		private IExpr _Parse(string scriptName, string s, ref List<ParseErrorInst> errors, bool verbose = false, bool createTempScope = true, bool hardTerminal = false) {
 			errors.Clear();
 			// Save this for LogCompileErrors.
 			_parseErrors = errors;
@@ -193,7 +224,7 @@ namespace Pebble {
 
 			bool error = false;
 			if (createTempScope) {
-				if (!defaultContext.stack.PushTerminalScope("<Parse>", defaultContext)) {
+				if (!defaultContext.stack.PushTerminalScope("<Parse>", defaultContext, hardTerminal)) {
 					LogCompileError(ParseErrorType.StackOverflow, "_Parse: stack overflow");
 					error = true;
 				}
@@ -234,13 +265,11 @@ namespace Pebble {
 		(Unlike compile errors which can be multiple, evaluation stops as soon as it encounters
 		a single error.)
 		*/
-		public object EvaluateExpression(IExpr expr) {
+		public ScriptResult EvaluateExpression(IExpr expr) {
 			return _EvaluateExpression(expr, true);
 		}
 
-		private object _EvaluateExpression(IExpr expr, bool createTempScope) {
-			object res = null;
-
+		private ScriptResult _EvaluateExpression(IExpr expr, bool createTempScope, bool hardTerminal = false) {
 			if (null == expr) {
 				LogError("Cannot evaluate null expression.");
 				return null;
@@ -249,26 +278,32 @@ namespace Pebble {
 			StackState stackState = defaultContext.stack.GetState();
 
 			if (createTempScope) {
-				if (!defaultContext.stack.PushTerminalScope("<Evaluate>", defaultContext)) {
+				if (!defaultContext.stack.PushTerminalScope("<Evaluate>", defaultContext, hardTerminal)) {
 					LogError("_EvaluateExpression: stack overflow");
 					return null;
 				}
 			}
 
-			res = expr.Evaluate(defaultContext);
+			ScriptResult result = new ScriptResult();
+
+			result.value = expr.Evaluate(defaultContext);
 
 			if (defaultContext.IsRuntimeErrorSet()) {
 				defaultContext.stack.RestoreState(stackState);
 				if (logCompileErrors)
 					LogError(defaultContext.GetRuntimeErrorString());
-				res = defaultContext.control.runtimeError;
+				result.runtimeError = defaultContext.control.runtimeError;
+				result.success = false;
 				defaultContext.control.Clear();
-			} else if (createTempScope) {
-				defaultContext.stack.RestoreState(stackState);
-				defaultContext.control.Clear();
+			} else {
+				result.success = true;
+				if (createTempScope) {
+					defaultContext.stack.RestoreState(stackState);
+					defaultContext.control.Clear();
+				}
 			}
 
-			return res;
+			return result;
 		}
 
 		// Creates a string "name" from the given script for use in error messages.
@@ -304,21 +339,24 @@ namespace Pebble {
 			}
 
 			object actualValue = null;
-			try {
-				if (null != expr)
-					actualValue = _EvaluateExpression(expr, false);
-				else
-					actualValue = null;
-			} catch (Exception e) {
-				if (!verbose) Log("-> " + script);
-				LogError(script + "\n Unhandled exception evaluating script: " + e.ToString());
-				LogError("Parse = " + expr.MyToString(""));
-				return false;
-			}
 
-			if (actualValue is RuntimeErrorInst) {
-				LogError("Parse = " + expr.MyToString(""));
-				return false;
+			if (null != expr) {
+				ScriptResult result;
+				try {
+					result = _EvaluateExpression(expr, false);
+				} catch (Exception e) {
+					if (!verbose) Log("-> " + script);
+					LogError(script + "\n Unhandled exception evaluating script: " + e.ToString());
+					LogError("Parse = " + expr.MyToString(""));
+					return false;
+				}
+
+				if (!result.success) {
+					LogError("Parse = " + expr.MyToString(""));
+					return false;
+				}
+
+				actualValue = result.value;
 			}
 
 			if (expectedValue is int)
@@ -410,19 +448,19 @@ namespace Pebble {
 				return false;
 			}
 
-			object result = _EvaluateExpression(expr, false);
-			RuntimeErrorInst errResult = result as RuntimeErrorInst;
-			if (null == errResult) {
+			ScriptResult result = _EvaluateExpression(expr, false);
+			if (null == result.runtimeError) {
 				if (!verbose) LogError("-> " + script);
 				LogError("Parse = " + expr);
-				LogError("Expected 'execution fail' script to throw an error on execution, instead returned " + ((null != result) ? result.GetType().ToString() : "null"));
-				if (result is Exception)
-					LogError(((Exception)result).ToString());
+				LogError("Expected 'execution fail' script to throw an error on execution, instead returned " + ((null != result) ? result.value.GetType().ToString() : "null"));
+				//!
+				//if (result is Exception)
+				//	LogError(((Exception)result).ToString());
 				return false;
-			} else if (errResult.type != errorType) {
+			} else if (result.runtimeError.type != errorType) {
 				if (!verbose) LogError("-> " + script);
 				LogError("Parse = " + expr);
-				LogError("Expected 'execution fail' script to throw a (" + errorType + ") error on execution, instead returned " + errResult.type);
+				LogError("Expected 'execution fail' script to throw a (" + errorType + ") error on execution, instead returned " + result.runtimeError.type);
 				return false;
 			}
 

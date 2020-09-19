@@ -30,17 +30,17 @@ assert(a.n == 2 && a.ninc == 3);
 
 assert(ScriptError::SymbolNotFound) {
 	class F1 {
-		num n;
+		num field;
 		static num SF() {
-			n;
+			field;
 		}
 	};
 }
 
 assert(ScriptError::SymbolAlreadyDeclared) {
 	class F2 {
-		num n;
-		num F(num n) {
+		num field;
+		num F(num field) {
 			0;
 		}
 	};
@@ -48,17 +48,17 @@ assert(ScriptError::SymbolAlreadyDeclared) {
 
 assert(ScriptError::ClassMemberNotFound) {
 	class F3 {
-		num n;
+		num field;
 		static num SF() {
-			F3::n;
+			F3::field;
 		}
 	};
 }
 
 assert(ScriptError::SymbolAlreadyDeclared) {
 	class F4 {
-		static num n;
-		num F(num n) {
+		static num field;
+		num F(num field) {
 			0;
 		}
 	};
@@ -66,14 +66,14 @@ assert(ScriptError::SymbolAlreadyDeclared) {
 
 assert(ScriptError::SymbolAlreadyDeclared) {
 	class F5 {
-		static num n;
-		num n;
+		static num field;
+		num field;
 	};
 }
 
 assert(ScriptError::SymbolAlreadyDeclared) {
 	class F6 {
-		num n;
-		static num n;
+		num field;
+		static num field;
 	};
 }

@@ -54,6 +54,7 @@ namespace Pebble {
 		private int _varStackStart;
 		private string _name;
 		private bool _terminal;
+		private bool _hardTerminal;
 
 		private ClassValue _classInstance;
 		private ClassDef _classDef;
@@ -63,6 +64,7 @@ namespace Pebble {
 		public int varStackStart { get { return _varStackStart; } }
 		public string name { get { return _name; } }
 		public bool terminal { get { return _terminal; } }
+		public bool hardTerminal { get { return _hardTerminal; } }
 		public TypeDef_Function funcType { get { return _funcType; } }
 		public ClassValue classInstance { get { return _classInstance; } }
 		public ClassDef classDef { get { return _classDef; } }
@@ -73,6 +75,7 @@ namespace Pebble {
 			_varStackStart = depth;
 			_name = name;
 			_terminal = false;
+			_hardTerminal = false;
 			_classInstance = null;
 			_classDef = null;
 			_funcType = null;
@@ -85,6 +88,7 @@ namespace Pebble {
 			_varStackStart = depth;
 			_name = name;
 			_terminal = true;
+			_hardTerminal = false;
 			_classInstance = null;
 			_classDef = null;
 			_funcType = null;
@@ -99,6 +103,7 @@ namespace Pebble {
 			_varStackStart = depth;
 			_name = "class (" + classInstance.classDef.name + ")";
 			_terminal = terminalIn;
+			_hardTerminal = false;
 			_classInstance = classInstance;
 			_classDef = null;
 			_funcType = null;
@@ -111,6 +116,7 @@ namespace Pebble {
 			_varStackStart = depth;
 			_name = "class (" + classDef.name + ")";
 			_terminal = true;
+			_hardTerminal = false;
 			_classInstance = null;
 			_classDef = classDef;
 			_funcType = funcType;
@@ -122,10 +128,23 @@ namespace Pebble {
 			_varStackStart = depth;
 			_name = "function call (" + name + ")";
 			_terminal = true;
+			_hardTerminal = false;
 			_classInstance = classInstance;
 			_classDef = null;
 			_funcType = funcType;
 			_isStatic = isStaticIn;
+		}
+
+		// ATM, this is only used by Exec.
+		public void SetHardTerminal(int depth, string name = "<hardTerminal>") {
+			_varStackStart = depth;
+			_name = "hardTerminal";
+			_terminal = true;
+			_hardTerminal = true;
+			_classInstance = null;
+			_classDef = null;
+			_funcType = null;
+			_isStatic = false;
 		}
 	}
 
@@ -145,7 +164,16 @@ namespace Pebble {
 	// in that parameterless constructor, meaning that anyone that creates a VSR that way will 
 	// create an invalid one.
 	public struct VarStackRef {
-		public readonly bool isValid;
+		public enum ErrorType {
+			None,
+			NotFound,
+			AlreadyExists,
+			ReservedSymbol,
+			NonUnique,
+		};
+		public readonly ErrorType errorType;
+
+		public bool isValid { get { return ErrorType.None == errorType; } }
 
 		// This is the number you add to _callCount to get the index into _callStack.
 		// For examle, -1 is the top of the call stack.
@@ -159,9 +187,9 @@ namespace Pebble {
 		public readonly Variable variable;
 
 		// This creates an invalid VarStackRef.
-		public VarStackRef(bool valid) {
-			Pb.Assert(false == valid);
-			isValid = false;
+		public VarStackRef(ErrorType error) {
+			Pb.Assert(error != ErrorType.None);
+			errorType = error;
 			callIndexOffset = -9000;
 			varIndex = -1;
 			isGlobal = false;
@@ -172,7 +200,7 @@ namespace Pebble {
 
 		// This is for uniques, both globals and those on the stack.
 		public VarStackRef(Variable uniqueVariable, bool global) {
-			isValid = true;
+			errorType = ErrorType.None;
 			callIndexOffset = -9000;
 			varIndex = -1;
 			isGlobal = global;
@@ -185,7 +213,7 @@ namespace Pebble {
 
 		// Use this one for non-unique variables on the varStack.
 		public VarStackRef(ITypeDef typeDefIn, int callIx, int ix) {
-			isValid = true;
+			errorType = ErrorType.None;
 			typeDef = typeDefIn;
 			callIndexOffset = callIx;
 			varIndex = ix;
@@ -197,7 +225,7 @@ namespace Pebble {
 		// Use this one for class members, both regular and static.
 		//! statics are unique but we aren't referencing them that way atm.
 		public VarStackRef(ITypeDef typeDefIn, int callIx, MemberRef memRef) {
-			isValid = true;
+			errorType = ErrorType.None;
 			typeDef = typeDefIn;
 			callIndexOffset = callIx;
 			varIndex = -1;
@@ -247,7 +275,7 @@ namespace Pebble {
 		public bool IsSymbolAvailable(ExecContext context, string symbol, bool ignoreGlobals = false) {
 			if (context.DoesTypeExist(symbol))
 				return false;
-			VarStackRef index = GetVarIndexByName(null, symbol);
+			VarStackRef index = GetVarIndexByName(null, symbol, true);
 			return !index.isValid || (ignoreGlobals && index.isGlobal);
 		}
 		/*
@@ -345,15 +373,18 @@ namespace Pebble {
 			return true;
 		}
 
-		public bool PushTerminalScope(string name, ExecContext context) {
+		public bool PushTerminalScope(string name, ExecContext context, bool hard = false) {
 			if (CALLSTACKMAXDEPTH == _callCount)
 				return false;
 
-			_callStack[_callCount].SetTerminal(_varCount, name);
+			if (hard)
+				_callStack[_callCount].SetHardTerminal(_varCount, name);
+			else
+				_callStack[_callCount].SetTerminal(_varCount, name);
 			++_callCount;
 
 #if PEBBLE_TRACESTACK
-			TraceScope("PushTerminalScope");
+			TraceScope("PushTerminalScope" + (hard ? "(hard)" : ""));
 #endif
 
 			return true;
@@ -531,14 +562,15 @@ namespace Pebble {
 		// adds a lot of complexity to the system. Since the idea is to create these Refs during
 		// TypeCheck, any discrepancy between the order scopes are pushed/popped and variables created
 		// between TypeCheck and Evaluate WILL result in a grave error.
-		public VarStackRef GetVarIndexByName(ExecContext context, string name) {
+		public VarStackRef GetVarIndexByName(ExecContext context, string name, bool stopAtTerminals = false) {
 
+			bool onlyUnique = false;
 			int callIx = _callCount;
 			int varIx = _varCount - 1;
 			while (--callIx >= 0) {
 				StackScope scope = _callStack[callIx];
 
-				if (null != scope.classInstance) {
+				if (!onlyUnique && null != scope.classInstance) {
 					// If this scope is a class function call, search that class for 
 					// a member with that name.
 					ITypeDef typeDef = null;
@@ -546,9 +578,9 @@ namespace Pebble {
 					if (!memRef.isInvalid) {
 						return new VarStackRef(typeDef, callIx - _callCount, memRef);
 					}
-				} 
+				}
 
-				if (null != scope.classDef) {
+				if (!onlyUnique && null != scope.classDef) {
 					ITypeDef typeDef = null;
 					MemberRef memRef = _callStack[callIx].classDef.GetMemberRef(context, name, scope.isStatic ? ClassDef.SEARCH.STATIC : ClassDef.SEARCH.EITHER, ref typeDef);
 					if (!memRef.isInvalid) {
@@ -562,14 +594,23 @@ namespace Pebble {
 						Variable var = _varStack[varIx];
 						if (var.unique)
 							return new VarStackRef(var, false);
-						else
+						else if (!onlyUnique)
 							return new VarStackRef(_varStack[varIx].type, callIx - _callCount, varIx - scope.varStackStart);
+						else
+							return new VarStackRef(VarStackRef.ErrorType.NonUnique);
 					}
 					--varIx;
 				}
 
-				if (scope.terminal)
+				if (scope.hardTerminal)
 					break;
+
+				if (scope.terminal) {
+					if (stopAtTerminals)
+						break;
+					else
+						onlyUnique = true;
+				}
 			}
 
 			// Search globals last. Globals are always in scope.
@@ -579,7 +620,7 @@ namespace Pebble {
 				return new VarStackRef(var, true);
 			}
 
-			return new VarStackRef(false);
+			return new VarStackRef(VarStackRef.ErrorType.NotFound);
 		}
 
 		public VarStackRef GetGlobalVarIndexByName(string name) {
@@ -589,7 +630,7 @@ namespace Pebble {
 				return new VarStackRef(var, true);
 			}
 
-			return new VarStackRef(false);
+			return new VarStackRef(VarStackRef.ErrorType.NotFound);
 		}
 
 		// BIG IMPORTANT FUNCTION.

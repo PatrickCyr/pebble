@@ -202,16 +202,16 @@ namespace Pebble {
 		// for uses this to 1) check to make sure symbol doesn't already exist, 2) push var on the stack for type checking
 		public VarStackRef CreateTemp(string symbol, ITypeDef type, bool global = false, bool doesntCollideWithGlobal = false, bool unique = false) {
 			if (null != GetTypeByName(symbol))
-				return new VarStackRef(false);
+				return new VarStackRef(VarStackRef.ErrorType.AlreadyExists);
 
 			if (Pb.reservedWords.Contains(symbol))
-				return new VarStackRef(false);
+				return new VarStackRef(VarStackRef.ErrorType.ReservedSymbol);
 
 			// Unsure about this null
-			VarStackRef existingRef = stack.GetVarIndexByName(null, symbol);
+			VarStackRef existingRef = stack.GetVarIndexByName(null, symbol, true);
 			if (existingRef.isValid) {
 				if (!(doesntCollideWithGlobal && existingRef.isGlobal))
-					return new VarStackRef(false);
+					return new VarStackRef(VarStackRef.ErrorType.AlreadyExists);
 			}
 
 			if (unique) {

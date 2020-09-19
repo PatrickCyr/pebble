@@ -914,8 +914,6 @@ namespace Pebble {
 				{@"class OY : N { num x = 5; };", ParseErrorType.SymbolAlreadyDeclared},
 				// - argument b shadows inherited property b.
 				{@"class OX : N { bool eqFunc(num a, num b) { a == b; } num square() { x * y; } };", ParseErrorType.SymbolAlreadyDeclared},
-				// -- Function scope not fully lexical.
-				{"num noAccess() { x; }", ParseErrorType.SymbolNotFound},
 				// -- Assignment to member
 				{"{ o.square = null; true; }", ParseErrorType.AssignToConst},
 				{"class OXX { num xy = true; };", ParseErrorType.TypeMismatch},
@@ -1029,8 +1027,6 @@ namespace Pebble {
 				{"{ for(xxx=1, 10) { num xxx; }; }", ParseErrorType.SymbolAlreadyDeclared},
 				{"{ foreach (k, v in dict) { bool k; } }", ParseErrorType.SymbolAlreadyDeclared},
 				{"{ foreach (k, v in dict) { bool v; } }", ParseErrorType.SymbolAlreadyDeclared},
-				// -- function shielding
-				{"{ num somevar; num fun() { somevar; }; }", ParseErrorType.SymbolNotFound},
 
 				// If
 				// -- allocation body (not embeddable statement)
@@ -1275,7 +1271,6 @@ namespace Pebble {
 			int filesSucceeded = 0;
 			int filesFailed = 0;
 			if (Directory.Exists(unittestPath)) {
-				List<ParseErrorInst> errors = new List<ParseErrorInst>();
 				string[] testFiles = Directory.GetFiles(unittestPath);
 				if (testFiles.Length > 0) {
 					engine.Log("* Checking files in '" + unittestPath + "' directory (expected result = true)...");
@@ -1283,9 +1278,12 @@ namespace Pebble {
 					foreach (string testFile in testFiles) {
 						string testFileData = File.ReadAllText(testFile);
 
-						object result = engine.RunScript(testFileData, ref errors, false, testFile);
-						if (!(result is bool) || true != (bool)result) {
-							engine.LogError("  ^ " + testFile + " failed with " + errors.Count + " errors.");
+						ScriptResult result = engine.RunScript(testFileData, false, testFile);
+						if (null != result.parseErrors) {
+							engine.LogError("  ^ " + testFile + " failed with " + result.parseErrors.Count + " parse errors.");
+							++filesFailed;
+						} else if (null != result.runtimeError) {
+							engine.LogError("  ^ " + testFile + " failed with a runtime error.");
 							++filesFailed;
 						} else
 							++filesSucceeded;

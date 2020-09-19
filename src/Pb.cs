@@ -177,6 +177,7 @@ namespace Pebble {
 		TypeNotFound,
 		TypeNotIndexable,
 		TypesUnrelated,
+		VariableNotUnique,
 		VoidFunctionsOnly,
 		WhileConditionNotBoolean,
 	}

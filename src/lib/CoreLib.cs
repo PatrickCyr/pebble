@@ -255,22 +255,21 @@ namespace Pebble {
 			{
 				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
 					string script = (string)args[0];
-					List<ParseErrorInst> errors = new List<ParseErrorInst>();
 
 					ClassValue scriptResultInst = scriptResultBoolClassDef.Allocate(context);
 					Variable value = scriptResultInst.GetByName("value");
 					Variable error = scriptResultInst.GetByName("error");
 					Variable message = scriptResultInst.GetByName("message");
 
-					object result = context.engine.RunScript(script, ref errors, false);
-					if (errors.Count > 0) {
+					ScriptResult result = context.engine.RunScript(script, false, null, true);
+					if (null != result.parseErrors) {
 						value.value = false;
-						error.value = scriptErrorEnum.GetValue(errors[0].type.ToString()); ;
-						message.value = errors[0].ToString();
-					} else if (result is RuntimeErrorInst) {
+						error.value = scriptErrorEnum.GetValue(result.parseErrors[0].type.ToString()); ;
+						message.value = result.parseErrors[0].ToString();
+					} else if (null != result.runtimeError) {
 						value.value = false;
-						error.value = result;
-						message.value = ((RuntimeErrorInst)result).ToString();
+						error.value = result.value;
+						message.value = result.runtimeError.ToString();
 					} else {
 						value.value = true;
 						error.value = scriptErrorEnum_noErrorValue;
@@ -289,22 +288,21 @@ namespace Pebble {
 			{
 				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
 					string script = (string)args[0];
-					List<ParseErrorInst> errors = new List<ParseErrorInst>();
 
 					ClassValue scriptResultInst = scriptResultBoolClassDef.Allocate(context);
 					Variable value = scriptResultInst.GetByName("value");
 					Variable error = scriptResultInst.GetByName("error");
 					Variable message = scriptResultInst.GetByName("message");
 
-					object result = context.engine.RunInteractiveScript(script, ref errors, false);
-					if (errors.Count > 0) {
+					ScriptResult result = context.engine.RunInteractiveScript(script, false);
+					if (null != result.parseErrors) {
 						value.value = false;
-						error.value = scriptErrorEnum.GetValue(errors[0].type.ToString()); ;
-						message.value = errors[0].ToString();
-					} else if (result is RuntimeErrorInst) {
+						error.value = scriptErrorEnum.GetValue(result.parseErrors[0].type.ToString()); ;
+						message.value = result.parseErrors[0].ToString();
+					} else if (null != result.runtimeError) {
 						value.value = false;
-						error.value = result;
-						message.value = ((RuntimeErrorInst)result).ToString();
+						error.value = result.value;
+						message.value = result.runtimeError.ToString();
 					} else {
 						value.value = true;
 						error.value = scriptErrorEnum_noErrorValue;
@@ -398,6 +396,22 @@ namespace Pebble {
 				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.NUMBER, new ArgList { IntrinsicTypeDefs.ANY }, eval, false);
 				engine.AddBuiltInFunction(newValue, "ToNum");
 			}
+
+			///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			// TODO: Find a better place for this.
+
+			//@ global string GetCh()
+			//   Waits for the user to press a key and returns it.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					ConsoleKeyInfo cki = Console.ReadKey(true);
+					return cki.KeyChar.ToString();
+				};
+				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.STRING, new ArgList { }, eval, false);
+				engine.AddBuiltInFunction(newValue, "GetCh");
+			}
+
+			///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 			//@ global string ToString(...)
 			//   Converts all arguments to strings, concatenates them, and returns the result.

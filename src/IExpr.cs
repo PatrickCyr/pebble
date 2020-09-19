@@ -328,7 +328,10 @@ namespace Pebble {
 
 			_ref = context.GetVarRefByName(context, _symbol);
 			if (!_ref.isValid) {
-				LogCompileErr(context, ParseErrorType.SymbolNotFound, "Symbol (" + _symbol + ") not found.");
+				if (_ref.errorType == VarStackRef.ErrorType.NonUnique)
+					LogCompileErr(context, ParseErrorType.VariableNotUnique, "Symbol '" + _symbol + "' cannot be accessed from here because it is non-unique.");
+				else
+					LogCompileErr(context, ParseErrorType.SymbolNotFound, "Symbol '" + _symbol + "' not found.");
 				error = true;
 				return null;
 			}
@@ -498,6 +501,8 @@ namespace Pebble {
 				}
 				fieldType = _globVarRef.typeDef;
 			} else {
+				_globVarRef = new VarStackRef(VarStackRef.ErrorType.NotFound);
+
 				_scope = context.GetClass(_className);
 				if (null == _scope) {
 					LogCompileErr(context, ParseErrorType.ClassNotDeclared, "Class " + _className + " not found.");
@@ -1242,17 +1247,6 @@ namespace Pebble {
 				return null;
 			}
 
-			if (null != value && typeCheckValue) {
-				ITypeDef valueType = value.TypeCheck(context, ref error);
-				if (!error) {
-					// Oh boy, we have a value to type check.
-					if (!typeDef.CanStoreValue(context, valueType)) {
-						LogCompileErr(context, ParseErrorType.TypeMismatch, "Set: variable of type (" + typeDef + ") cannot store value of type (" + valueType + ").");
-						error = true;
-					}
-				}
-			}
-
 			if (!isClassField) {
 				// If we are not in a function and not a class field, then we 
 				// are a single-instance variable, and we should save the instance right now.
@@ -1267,6 +1261,17 @@ namespace Pebble {
 
 				if (unique)
 					_uniqueVar = vsr.variable;
+			}
+
+			if (null != value && typeCheckValue) {
+				ITypeDef valueType = value.TypeCheck(context, ref error);
+				if (!error) {
+					// Oh boy, we have a value to type check.
+					if (!typeDef.CanStoreValue(context, valueType)) {
+						LogCompileErr(context, ParseErrorType.TypeMismatch, "Set: variable of type (" + typeDef + ") cannot store value of type (" + valueType + ").");
+						error = true;
+					}
+				}
 			}
 
 			return SetType(typeDef);
@@ -2760,8 +2765,6 @@ namespace Pebble {
 		public override object Evaluate(ExecContext context) {
 			Pb.Assert(0 == context.control.flags);
 
-			object result = null;
-
 			Variable variable = (_lhs as IExpr_LValue).EvaluateLValue(context);
 			if (context.IsRuntimeErrorSet())
 				return null;
@@ -2821,30 +2824,28 @@ namespace Pebble {
 
 			// Evaluate expression
 			context.engine.logCompileErrors = false;
-			result = context.engine.EvaluateExpression(scriptExpr);
+			ScriptResult scriptResult = context.engine.EvaluateExpression(scriptExpr);
 			context.engine.logCompileErrors = sav;
 
 			// If streaming directly to a value...
 			if (null == resultInstance) {
 				// ...if there was an error...
-				if (result is RuntimeErrorInst) {
+				if (scriptResult.runtimeError != null) {
 					// ...reapply the error so that execution is aborted.
-					RuntimeErrorInst rei = result as RuntimeErrorInst;
-					SetRuntimeError(context, rei.type, rei.msg);
+					SetRuntimeError(context, scriptResult.runtimeError.type, scriptResult.runtimeError.msg);
 					return null;
 				} else {
-					variable.value = result;
-					return result;
+					variable.value = scriptResult.value;
+					return scriptResult.value;
 				}
 			} else {
 				// ...if there was an error...
-				if (result is RuntimeErrorInst) {
+				if (scriptResult.runtimeError != null) {
 					// ...save the error info to the Result, and don't abort execution.
-					RuntimeErrorInst rei = result as RuntimeErrorInst;
-					resultInstance.GetByName("error").value = CoreLib.scriptErrorEnum.GetValue(rei.type.ToString());
-					resultInstance.GetByName("message").value = rei.msg;
+					resultInstance.GetByName("error").value = CoreLib.scriptErrorEnum.GetValue(scriptResult.runtimeError.type.ToString());
+					resultInstance.GetByName("message").value = scriptResult.runtimeError.msg;
 				} else {
-					resultInstance.GetByName("value").value = result;
+					resultInstance.GetByName("value").value = scriptResult.value;
 				}
 				return resultInstance;
 			}
@@ -3743,10 +3744,10 @@ namespace Pebble {
 								// ... then it's no error.
 								_result = true;
 							} else {
-								reason = "Expected " + expectedName + ", got " + _pei.ToString();
+								reason = "Expected " + expectedName + ", got " + _pei.type.ToString();
 							}
 						} else {
-							reason = "Expected " + expectedName + ", got " + _pei.ToString();
+							reason = "(Unexpected error!) Expected " + expectedName + ", got " + _pei.ToString();
 						}
 					} else {
 						reason = "Unexpected " + _pei.type.ToString();
