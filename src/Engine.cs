@@ -453,9 +453,6 @@ namespace Pebble {
 				if (!verbose) LogError("-> " + script);
 				LogError("Parse = " + expr);
 				LogError("Expected 'execution fail' script to throw an error on execution, instead returned " + ((null != result) ? result.value.GetType().ToString() : "null"));
-				//!
-				//if (result is Exception)
-				//	LogError(((Exception)result).ToString());
 				return false;
 			} else if (result.runtimeError.type != errorType) {
 				if (!verbose) LogError("-> " + script);

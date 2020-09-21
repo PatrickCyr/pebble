@@ -453,7 +453,7 @@ Stat<ref IExpr expr>											(. Expr_If ifExpr = null; IExpr cond = null; IExp
 	.
 
 // A block of stats. This is only used for blocks just below the top level.
-//! What is it's value if it has no Statements, though?!
+// Note: if no expressions the value of the block is null.
 StatBlock<ref IExpr exprBlock>
 =						(.	Expr_ExprList block = new Expr_ExprList(this);
 							exprBlock = block;

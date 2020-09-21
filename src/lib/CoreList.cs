@@ -291,6 +291,31 @@ namespace Pebble {
 				classDef.AddMemberLiteral("Set", newValue.valType, newValue);
 			}
 
+			//@ List<T> Shuffle()
+			//   Shuffles the list, putting the elements in random order.
+			//	 Returns the list.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					var list = (thisScope as PebbleList).list;
+
+					Random rng = new Random();
+
+					int n = list.Count;
+					while (n > 1) {
+						--n;
+						int k = rng.Next(n + 1);
+						Variable value = list[k];
+						list[k] = list[n];
+						list[n] = value;
+					}
+					
+					return thisScope;
+				};
+
+				FunctionValue_Host newValue = new FunctionValue_Host(ourType, new ArgList { }, eval, false, ourType);
+				classDef.AddMemberLiteral("Shuffle", newValue.valType, newValue);
+			}
+
 			//@ List<T> Sort(functype<num(T, T>)> comparator)
 			//   Sorts the list using the given comparator function. 
 			//   The comparator should behave the same as a C# Comparer. The first argument should be earlier in the

@@ -1195,6 +1195,11 @@ namespace Pebble {
 				{"class GetonlyFailTest { static getonly const num gcn; };", ParseErrorType.GetonlyNonConst},
 				{"class GetonlyFailTest { getonly void G() { } };", ParseErrorType.GetonlyClassMembersOnly},
 				{"class GetonlyFailTest { getonly const void G() { } };", ParseErrorType.ClassMemberFunctionsConst},
+
+				// Enum
+				// - insure that if there is an error during creating the type is destroyed.
+				{"enum<num> FailEnum { BAD = true };", ParseErrorType.TypeMismatch},
+				{"FailEnum failEnum;", ParseErrorType.TypeNotFound},
 			};
 
 			if (!engine.defaultContext.stack.PushTerminalScope("<test scope>", null)) {

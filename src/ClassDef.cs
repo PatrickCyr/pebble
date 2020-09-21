@@ -409,9 +409,6 @@ namespace Pebble {
 
 		// Create a new instance of the class.
 		public ClassValue Allocate(ExecContext context) {
-			//! We can still do it internally, though...
-			//Pb.Assert(!isUninstantiable, "Internal error: attempt to instantiate an uninstantiable class.");
-
 			ClassValue result = childAllocator();
 			result.classDef = this;
 			result.debugName = name + " Inst";
@@ -642,7 +639,8 @@ namespace Pebble {
 			return true;
 		}
 
-		//! This currently does inefficient searching.
+		// This is an inefficient search but I wouldn't expect it to be common to have enums with enough values for 
+		// it to really matter enough to justify adding the memory overhead of a hash table or something.
 		public ClassValue_Enum GetValue(string name) {
 			foreach (Variable var in _classDef.staticVars) {
 				if (var.name == name)

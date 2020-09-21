@@ -146,7 +146,6 @@ namespace Pebble {
 
 					PebbleList list = PebbleList.AllocateListString(context, "String::GetUnicode result");
 					foreach (char c in source.ToCharArray())
-						//! maybe write a convenince add function
 						list.list.Add(new Variable(null, IntrinsicTypeDefs.NUMBER, Convert.ToDouble(Convert.ToInt32(c))));
 
 					return list;

@@ -208,7 +208,6 @@ namespace Pebble {
 			memberRef = MemberRef.invalid;
 			typeDef = uniqueVariable.type;
 			variable = uniqueVariable;
-			//!Pb.Assert(variable.persistent == true);
 			variable.unique = true;
 		}
 
@@ -224,7 +223,8 @@ namespace Pebble {
 		}
 
 		// Use this one for class members, both regular and static.
-		//! statics are unique but we aren't referencing them that way atm.
+		// Note: statics could be stored as uniques, but everything works
+		// atm. If it aint broke, don't fix it.
 		public VarStackRef(ITypeDef typeDefIn, int callIx, MemberRef memRef) {
 			errorType = ErrorType.None;
 			typeDef = typeDefIn;

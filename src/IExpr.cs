@@ -1373,13 +1373,18 @@ namespace Pebble {
 			if (context.IsRuntimeErrorSet())
 				return null;
 
-			//! do i need to check for errors here?
 			if ((Boolean)ret == true) {
 				trueCase.Evaluate(context);
 			} else {
 				if (null != falseCase)
 					falseCase.Evaluate(context);
 			}
+
+			// Note: I failed to come up with a unittest to test for this. Because if is an expression it is either part of a exprlist, which itself checks 
+			// for errors after every expr, or it is by itself and the error gets caught at the engine level. Still, seems like a good idea
+			// to always test for errors.
+			if (context.IsRuntimeErrorSet())
+				return null;
 
 			return false;
 		}
@@ -1515,52 +1520,25 @@ namespace Pebble {
 			}
 			Variable it = context.CreateEval(iterator, IntrinsicTypeDefs.NUMBER, 0, false);
 
-			//! TODO: code this with one condition
-
-			// These two blocks need to be IDENTICAL except for the > or < in the for condition.
-			if (dStep > 0) {
-				for (double ii = dStart; ii <= dEnd; ii += dStep) {
-					it.value = ii;
-					body.Evaluate(context);
-					if (context.IsRuntimeErrorSet()) {
-						context.stack.PopScope();
-						return null;
-					}
-
-					if (0 != (context.control.flags & ControlInfo.CONTINUE)) {
-						// All we need to do to continue is just clear the flag.
-						context.control.flags -= ControlInfo.CONTINUE;
-					}
-					if (0 != (context.control.flags & ControlInfo.BREAK)) {
-						context.control.flags -= ControlInfo.BREAK;
-						break;
-					}
-					if (0 != (context.control.flags & ControlInfo.RETURN)) {
-						// Return isn't for us, so just break out.
-						break;
-					}
+			for (double ii = dStart; dStep > 0 ? ii <= dEnd : ii >= dEnd; ii += dStep) {
+				it.value = ii;
+				body.Evaluate(context);
+				if (context.IsRuntimeErrorSet()) {
+					context.stack.PopScope();
+					return null;
 				}
-			} else if (dStep < 0) {
-				for (double ii = dStart; ii >= dEnd; ii += dStep) {
-					it.value = ii;
-					body.Evaluate(context);
-					if (context.IsRuntimeErrorSet()) {
-						context.stack.PopScope();
-						return null;
-					}
 
-					if (0 != (context.control.flags & ControlInfo.CONTINUE)) {
-						// All we need to do to continue is just clear the flag.
-						context.control.flags -= ControlInfo.CONTINUE;
-					}
-					if (0 != (context.control.flags & ControlInfo.BREAK)) {
-						context.control.flags -= ControlInfo.BREAK;
-						break;
-					}
-					if (0 != (context.control.flags & ControlInfo.RETURN)) {
-						// Return isn't for us, so just break out.
-						break;
-					}
+				if (0 != (context.control.flags & ControlInfo.CONTINUE)) {
+					// All we need to do to continue is just clear the flag.
+					context.control.flags -= ControlInfo.CONTINUE;
+				}
+				if (0 != (context.control.flags & ControlInfo.BREAK)) {
+					context.control.flags -= ControlInfo.BREAK;
+					break;
+				}
+				if (0 != (context.control.flags & ControlInfo.RETURN)) {
+					// Return isn't for us, so just break out.
+					break;
 				}
 			}
 			context.stack.PopScope();
@@ -3629,8 +3607,6 @@ namespace Pebble {
 			}
 
 			_valueList.Clear();
-
-			//! TODO: clean up enum when we abort due to error
 
 			return null;
 		}
