@@ -165,6 +165,7 @@ namespace Pebble {
 	// create an invalid one.
 	public struct VarStackRef {
 		public enum ErrorType {
+			NOTINITIALIZED,
 			None,
 			NotFound,
 			AlreadyExists,

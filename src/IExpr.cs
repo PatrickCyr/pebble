@@ -368,7 +368,6 @@ namespace Pebble {
 	public class Expr_Dot : IExpr_LValue {
 		protected IExpr _obj { get { return nodes[0]; } }
 		protected string _field;
-		//protected VarStackRef _vsr;
 		protected MemberRef _fieldRef;
 
 		// When we evaluate we set this variable to the class we found.
@@ -428,7 +427,6 @@ namespace Pebble {
 				return null;
 			}
 
-			//_vsr = new VarStackRef(fieldType, ix, true);
 			_fieldRef = fieldRef;
 
 			return SetType(fieldType);
@@ -501,8 +499,6 @@ namespace Pebble {
 				}
 				fieldType = _globVarRef.typeDef;
 			} else {
-				_globVarRef = new VarStackRef(VarStackRef.ErrorType.NotFound);
-
 				_scope = context.GetClass(_className);
 				if (null == _scope) {
 					LogCompileErr(context, ParseErrorType.ClassNotDeclared, "Class " + _className + " not found.");
@@ -1248,10 +1244,11 @@ namespace Pebble {
 			}
 
 			if (!isClassField) {
-				// If we are not in a function and not a class field, then we 
+				// If we are not in a function, not in a loop, and not a class field, then we 
 				// are a single-instance variable, and we should save the instance right now.
 				TypeDef_Function funcType = context.stack.GetEnclosingFunctionType();
-				bool unique = null == funcType;
+				
+				bool unique = null == funcType && !context.stack.InForOrWhileStatement();
 
 				VarStackRef vsr = context.CreateTemp(symbol, typeDef, declMods._global, false, unique);
 				if (!vsr.isValid) {
@@ -1517,6 +1514,8 @@ namespace Pebble {
 				return null;
 			}
 			Variable it = context.CreateEval(iterator, IntrinsicTypeDefs.NUMBER, 0, false);
+
+			//! TODO: code this with one condition
 
 			// These two blocks need to be IDENTICAL except for the > or < in the for condition.
 			if (dStep > 0) {

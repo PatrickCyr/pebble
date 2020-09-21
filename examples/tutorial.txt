@@ -270,14 +270,62 @@ Debug::TimerStart();
 		assert(ScriptError::StackOverflow) { infiniteLoop(); }
 	}
 	
-	// * closures not supported
+	// * closures 
 	{
-		// Pebble does NOT have closures. Thus, functions cannot access any outside variables but global variables.
+		// Pebble has sort of limited closures. Function bodies can reference variables which are "unique", and cannot reference those which are not unique. Non-unique variables are those which are defined within functions, classes, or loops.
 	
-		num someVar;
-		void F() {
-			assert(ScriptError::SymbolNotFound) { someVar; }
+		global bool uniqueGlobal = true;
+		bool uniqueLocal = true;
+	
+		bool F() {
+			uniqueGlobal && uniqueLocal;
 		}
+		assert(F());
+		
+		// Variables defined in loops, as well as loop counters, are not unique.
+		for (ii = 1, 2) {
+			bool notUniqueBecauseInLoop = false;
+			
+			bool FInLoop() {
+				assert (ScriptError::VariableNotUnique) { ii; }
+				assert (ScriptError::VariableNotUnique) { notUniqueBecauseInLoop; }
+				uniqueGlobal && uniqueLocal;
+			}
+			assert(FInLoop());
+		}
+		
+		// Variables defined in functions are not unique.
+		bool G(bool input) {
+			bool notUniqueBecauseInFunction = false;
+		
+			bool NestedFunction() {
+				assert (ScriptError::VariableNotUnique) { input; }
+				assert (ScriptError::VariableNotUnique) { notUniqueBecauseInFunction; }
+				uniqueGlobal && uniqueLocal;
+			}
+			
+			input && uniqueGlobal && uniqueLocal && NestedFunction();
+		}
+		assert(G(true));
+		
+		// Non-static class variables are not unique.
+		class ClosureTest {
+			static bool uniqueBecauseStatic = true;
+			bool notUniqueBecauseClassField = false;
+			
+			bool F() {
+				bool notUniqueBecauseInFunction = false;
+			
+				bool NestedFunction() {
+					assert (ScriptError::VariableNotUnique) { notUniqueBecauseInFunction; }
+					// NestedFunction isn't a member function of ClosureTest so the variable cannot be found. There may not actually be a way to test that class fields are non-unique, tbh.
+					assert (ScriptError::SymbolNotFound) { notUniqueBecauseClassField; }
+					ClosureTest::uniqueBecauseStatic;
+				}
+				
+				NestedFunction();
+			}
+		};
 	}
 	
 	// * default values
