@@ -1,0 +1,127 @@
+/* There are ultimately two types of variables:
+
+* Unique: only one copy exists at a time.
+- global
+- class statics (not technically unique, but they work like them regardless)
+- everything that isn't non-unique ;)
+
+* Non-unique:
+- stack variables declared in functions
+- function args
+- class fields
+- everything inside for, foreach, and while loops
+
+Code inside functions can utilize unique variables, but not non-uniques. This is what passes for closures in pebble.
+*/
+
+///////////////////////////////////////////////////////////////////////////////
+// Basic tests.
+
+global num glob = 10;
+num local = 1;
+
+num FuncLocal(num x) {
+	local;
+	
+	num funcBodyVar = 2;
+
+	num InternalFunc() { 
+		// variables inside functions are not unique
+		assert(ScriptError::VariableNotUnique) { funcBodyVar; };
+		assert(ScriptError::VariableNotUnique) { x; };
+		glob + local; 
+	}
+	
+	x + InternalFunc();
+}
+
+assert(111 == FuncLocal(100));
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class tests
+
+class ClosureTest {
+	num classVar = -100;
+
+	static num staticN = 1000;
+
+	num F(num x) {
+		local;
+		
+		num funcBodyVar = 2;
+		
+		num InternalFunc() { 
+			// variables inside functions are not unique
+			assert(ScriptError::VariableNotUnique) { funcBodyVar; };
+			assert(ScriptError::VariableNotUnique) { x; };
+			glob + local + ClosureTest::staticN; 
+		}
+		
+		x + InternalFunc();
+	}
+	
+	static num S() {
+		num InternalFunc() {
+			ClosureTest::staticN;
+		}
+		InternalFunc() + staticN;
+	}
+};
+
+assert(2000 == ClosureTest::S());
+
+{
+	ClosureTest a = new;
+	assert(1011.1 == a.F(0.1));
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// for, foreach, while
+// - Variables declared in body are not unique.
+// - Iterators could be made unique but it would make the code more complicated, and I can't
+// think of any good use cases.
+
+List<functype<num()>> lfn = new;
+
+for (ii = 1, 3) {
+	local;
+
+	num inBody;
+
+	num InternalFunc() { 
+		assert(ScriptError::VariableNotUnique) { ii; }
+		assert(ScriptError::VariableNotUnique) { inBody; }
+		
+		local;
+	}
+	
+	lfn.Add(InternalFunc);
+}
+
+foreach (ix, f in lfn) {
+	assert(local == f());
+
+	local;
+	
+	num inBody;
+
+	void InternalFunc() { 
+		local;
+		assert(ScriptError::VariableNotUnique) { ix; }
+		assert(ScriptError::VariableNotUnique) { f; }
+		assert(ScriptError::VariableNotUnique) { inBody; }
+	}
+}
+
+num whileIx = 2;
+while (--whileIx > 0) {
+	local;
+	
+	num inBody;
+		
+	void InternalFunc() {
+		assert(ScriptError::VariableNotUnique) { inBody; }
+	}
+}
