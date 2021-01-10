@@ -26,6 +26,7 @@ namespace Pebble {
 		}
 
 		public static List<string> reservedWords = new List<string> {
+			"as",
 			"assert",
 			"break",
 			"catch",
@@ -39,23 +40,23 @@ namespace Pebble {
 			"false",
 			"for",
 			"foreach",
-			"funcdef",
 			"functype",
 			"getonly",
 			"global",
 			"if",
 			"in",
+			"is",
 			"new",
+			"null",
 			"override",
 			"return",
-			"scope",
 			"sealed",
 			"static",
-			"set",
 			"this",
 			"true",
 			"typealias",
 			"uninstantiable",
+			"void",
 			"while",
 		};
 	}

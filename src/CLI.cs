@@ -78,6 +78,7 @@ namespace PebbleCLI {
 			DebugLib.Register(engine);
 			FileLib.Register(engine);
 			DateTimeLib.Register(engine);
+			ConsoleLib.Register(engine);
 
 			List<ParseErrorInst> errors = new List<ParseErrorInst>();
 
@@ -111,14 +112,16 @@ namespace PebbleCLI {
 				ScriptResult result = engine.RunScript(fileContents, optVerbose, filename);
 				if (result.success)
 					Console.WriteLine("Returned: " + CoreLib.ValueToString(engine.defaultContext, result.value, true));
-				else { 
-					Console.WriteLine(result);
+				else {
+					// At time of writing, errors get printed (in red) when they are created, so don't need to do it again here.
+					//Console.WriteLine(result);
+					Console.WriteLine("  "+filename+" failed to compile or execute.");
 				}
 			}
 
 			// Interactive mode...
 			if (optInteractiveMode) {
-				Console.WriteLine("Pebble Interpreter (C) 2019 Patrick Cyr");
+				Console.WriteLine("Pebble Interpreter (C) 2021 Patrick Cyr");
 				Console.WriteLine("Interactive mode. Enter 'exit' to exit, 'help' for help:");
 
 				// Lines in interactive mode don't use their own scope. Instead, they 

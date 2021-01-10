@@ -7,6 +7,7 @@ List<string> files = new {
 		"CoreList.cs",
 		"CoreDictionary.cs",
 		"StreamLib.cs",
+		"ConsoleLib.cs",
 		"DateTimeLib.cs",
 		"FileLib.cs"
 	);

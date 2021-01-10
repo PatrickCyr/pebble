@@ -56,8 +56,7 @@ COMPILER Pebble
 				|| "void" == la.val
 				|| "global" == la.val 
 				|| "const" == la.val 
-				|| "functype" == la.val 
-				|| "funcdef" == la.val 
+				|| "functype" == la.val
 				|| "static" == la.val
 				|| "getonly" == la.val)
 			return true;

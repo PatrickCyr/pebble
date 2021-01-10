@@ -256,6 +256,8 @@ namespace Pebble {
 				{"{ num OF(num x, num y = 10) { x + y; } (11 == OF(1) && 21 == OF(1, 20)); }", true},
 				{"{ num OF2(num x = 1, num y = 10) { x + y; } (11 == OF2() && 20 == OF2(10) && 21 == OF2(1, 20)); }", true},
 				{"{ num OF3(num x = 1) { x * 2; } (2 == OF3() && 20 == OF3(10)); }", true},
+				// -- optional arg can be null
+				{"{ num OF4(M m = null) { null == m ? 1 : 0; } OF4(); }", 1},
 				// -- default value in function making it fit into variable with fewer arguments
 				{"{	functype<num()> fnn; num FNN(num x = 4) { x * 2; } fnn = FNN; fnn(); }", 8},
 				{"{	functype<num(num?)> fnn; num FNN(num x = 4) { x * 2; } fnn = FNN; fnn(); }", 8},

@@ -264,6 +264,18 @@ namespace Pebble {
 				classDef.AddMemberLiteral("RemoveRange", newValue.valType, newValue);
 			}
 
+			//@ List<T> Reverse()
+			//   Reverses the list and returns it.
+			{
+				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
+					var list = (thisScope as PebbleList).list;
+					list.Reverse();
+					return thisScope;
+				};
+
+				FunctionValue_Host newValue = new FunctionValue_Host(ourType, new ArgList { }, eval, false, ourType);
+				classDef.AddMemberLiteral("Reverse", newValue.valType, newValue);
+			}
 
 			//@ List<T> Set(num index, T newValue)
 			//   Changes the value of the element at the given index, and returns the list.
@@ -427,6 +439,8 @@ namespace Pebble {
 			result &= engine.RunTest("{ List<num> testln = new List<num>; testln.Add(1000).Add(2000); 2000 == testln.RemoveAt(0).Get(0) && 1 == testln.Count(); }", true, verbose);
 			// RemoveRange
 			result &= engine.RunTest("{ List<num> testln = new List<num>; testln.Add(1000).Add(2000).Add(3000).Add(4000); 4000 == testln.RemoveRange(1, 2)[1] && 2 == #testln; }", true, verbose);
+			// Reverse
+			result &= engine.RunTest("{ List<num> testln = new List<num>; testln.Add(1).Add(2).Add(3); testln.Reverse()[2] == 1 && testln[0] == 3; }", true, verbose);
 			// Sort
 			result &= engine.RunTest(@"{
 				// Note: This works because the String static functions don't have class type, because they don't need to.

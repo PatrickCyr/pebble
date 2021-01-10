@@ -544,7 +544,7 @@ namespace Pebble {
 	};
 
 	public class PebbleEnum {
-		private class EnumValue {
+		public class EnumValue {
 			public string name;
 			public IExpr initializer;
 			public object literalValue;
@@ -611,9 +611,9 @@ namespace Pebble {
 			return true;
 		}
 		
-		public bool AddValue_Literal(ExecContext context, string valueName, object litValue) {
+		public EnumValue AddValue_Literal(ExecContext context, string valueName, object litValue) {
 			if (_names.ContainsKey(valueName))
-				return false;
+				return null;
 			_names.Add(valueName, true);
 
 			_classDef.AddMember(valueName, enumType, null, true);
@@ -622,7 +622,8 @@ namespace Pebble {
 			ev.name = valueName;
 			ev.literalValue = litValue;
 			_values.Add(ev);
-			return true;
+
+			return ev;
 		}
 
 		public bool AddValue_Expr(ExecContext context, string valueName, IExpr initializer) {

@@ -83,6 +83,9 @@
     <Compile Include="..\src\IExpr.cs">
       <Link>IExpr.cs</Link>
     </Compile>
+    <Compile Include="..\src\lib\ConsoleLib.cs">
+      <Link>ConsoleLib.cs</Link>
+    </Compile>
     <Compile Include="..\src\lib\CoreDictionary.cs">
       <Link>CoreDictionary.cs</Link>
     </Compile>

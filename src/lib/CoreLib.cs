@@ -397,22 +397,6 @@ namespace Pebble {
 				engine.AddBuiltInFunction(newValue, "ToNum");
 			}
 
-			///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			// TODO: Find a better place for this.
-
-			//@ global string GetCh()
-			//   Waits for the user to press a key and returns it.
-			{
-				FunctionValue_Host.EvaluateDelegate eval = (context, args, thisScope) => {
-					ConsoleKeyInfo cki = Console.ReadKey(true);
-					return cki.KeyChar.ToString();
-				};
-				FunctionValue newValue = new FunctionValue_Host(IntrinsicTypeDefs.STRING, new ArgList { }, eval, false);
-				engine.AddBuiltInFunction(newValue, "GetCh");
-			}
-
-			///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 			//@ global string ToString(...)
 			//   Converts all arguments to strings, concatenates them, and returns the result.
 			{

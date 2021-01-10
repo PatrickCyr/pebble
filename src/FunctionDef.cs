@@ -3,20 +3,17 @@ Implementation of Function values.
 See Copyright Notice in LICENSE.TXT
 */
 
-
 using System.Collections.Generic;
-
-//using ArgList = System.Collections.Generic.List<Pebble.TypeRef>;
 
 namespace Pebble {
 
-	public class FunctionValue {
-		//public delegate object EvaluateDelegate(ExecContext context, List<IExpr> args);
+	public abstract class FunctionValue {
 
-		
 		public TypeDef_Function valType;
 		public FunctionValue_Host.EvaluateDelegate Evaluate;
 
+		// Note that this is a list of Expr_Literals. A null entry means no default value.
+		// To make a default value of null, create an Expr_Literal with value null.
 		public List<Expr_Literal> argDefaultValues;
 		public int minArgs;
 		public List<bool> argHasDefaults = null;
@@ -27,7 +24,7 @@ namespace Pebble {
 			if (null != argDefaultValues && 0 == argDefaultValues.Count)
 				argDefaultValues = null;
 			if (null == argDefaultValues)
-				return;	
+				return;
 
 			Pb.Assert(argDefaultValues.Count == argCount, "Default values array length doesn't match arg array length.");
 
