@@ -106,7 +106,13 @@ namespace PebbleCLI {
 
 			// Files...
 			foreach (string filename in optFiles) {
-				string fileContents = File.ReadAllText(filename);
+				string fileContents;
+				try {
+					fileContents = File.ReadAllText(filename);
+				} catch (Exception e) {
+					Console.WriteLine("Error attempting to open '" + filename + "': " + e.Message);
+					break;
+				}
 				errors.Clear();
 
 				ScriptResult result = engine.RunScript(fileContents, optVerbose, filename);

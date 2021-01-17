@@ -1151,7 +1151,16 @@ Debug::TimerStart();
 	
 		List<num> numList = new List<num>;
 
+		// Lists can be initialized with initialization blocks, like any other class.
+		numList = new { Add(10, 20, 30); };
+		assert(#numList == 3 && numList[2] == 30);
+		
+		// There is also special collection initialization syntax which is a bit more compact.
+		numList = new [[ 10, 20, 15 * 2 ]];
+		assert(#numList == 3 && numList[2] == 30);
+		
 		// Add/Push, Remove, Pop, Clear, Get, Set, Count, and [] operator
+		numList.Clear();
 		numList.Add(10);
 		assert(numList.Get(0) == 10);
 		numList.Push(20);
@@ -1193,7 +1202,12 @@ Debug::TimerStart();
 	
 		Dictionary<string, num> dic = new Dictionary<string, num>;
 		
+		// Like with List, there is a collection initialization syntax which can make initialization faster. Note that with Dictionaries, the first element is the first key, the second element is the first value, the 3rd element is the 2nd key, and so on.
+		dic = new [[ "one", 1, "two", 2, "three", 3 ]];
+		assert(#dic == 3 && dic["two"] == 2);
+		
 		// Add, Remove, Clear, Get, Set, Count, index operator []
+		dic.Clear();
 		assert(dic.Count() == 0);
 		dic.Add("one", 1);
 		dic.Add("two", 2);

@@ -2402,16 +2402,23 @@ namespace Pebble {
 		// compile-only. Expr_Assign sets this.
 		public ITypeDef parentSetTypeDef;
 
-		protected IExpr _initializer { get { return null != nodes ? nodes[0] : null; } }
+		protected IExpr _classInitializer { get { return nodes[0]; } }
+		protected List<IExpr> _collectionInitializer;
 
-		public Expr_New(Parser parser, ITypeRef type, IExpr initializer) : base(parser) {
+		public Expr_New(Parser parser, ITypeRef type, List<IExpr> collectionInitializer, IExpr classInitializer) : base(parser) {
 			typeRef = type;
-			if (null != initializer) {
-				Pb.Assert(initializer is Expr_ExprList, "Parser passed an expression that wasn't a list as a new initializer.");
 
-				nodes = new List<IExpr>();
-				nodes.Add(initializer);
+			if (null != classInitializer)
+				Pb.Assert(classInitializer is Expr_ExprList, "Parser passed an expression that wasn't a list as a new initializer.");
+
+			nodes = new List<IExpr>();
+			nodes.Add(classInitializer);
+			if (null != collectionInitializer) {
+				foreach (IExpr expr in collectionInitializer)
+					nodes.Add(expr);
 			}
+
+			_collectionInitializer = collectionInitializer;
 		}
 
 		public override string ToString() {
@@ -2419,7 +2426,7 @@ namespace Pebble {
 		}
 
 		public override string MyToString(string indent) {
-			return "NEW(" + (null != _type ? _type.ToString() : "<no type>") + (null != _initializer ? ", " + _initializer.MyToString("  " + indent) : "") + ")";
+			return "NEW(" + (null != _type ? _type.ToString() : "<no type>") + (null != _classInitializer ? ", " + _classInitializer.MyToString("  " + indent) : "") + ")";
 		}
 
 		public override ITypeDef TypeCheck(ExecContext context, ref bool error) {
@@ -2452,8 +2459,47 @@ namespace Pebble {
 				return null;
 			}
 
+			if (null != _collectionInitializer) {
+				bool isList = "List" == classType.className;
+				bool isDictionary = "Dictionary" == classType.className;
+				if (!isList && !isDictionary) {
+					LogCompileErr(context, ParseErrorType.CollectionInitializerOnContainersOnly, "Container initializer [] can only be used on Lists and Dictionaries.");
+					error = true;
+					return null;
+				}
 
-			if (null != _initializer) {
+				if (isDictionary && 1 == _collectionInitializer.Count % 2) {
+					LogCompileErr(context, ParseErrorType.CollectionInitializerDictionaryOdd, "Container initializer [] of Dictionaries must have an even number of elements.");
+					error = true;
+					return null;
+				}
+
+				for (int ii = 0; ii < _collectionInitializer.Count; ++ii) {
+					IExpr ai = _collectionInitializer[ii];
+					ITypeDef aiType = ai.TypeCheck(context, ref error);
+					if (error)
+						return null;
+
+					if (isList) {
+						//! Check to see if list type can hold ai type.
+						if (!classDef.typeDef.genericTypes[0].CanStoreValue(context, aiType)) {
+							LogCompileErr(context, ParseErrorType.TypeMismatch, "Container initializer value #" + ii + " cannot be stored in List.");
+							error = true;
+							return null;
+						}
+					} else {
+						// Even elements must be able to be stored in key types.
+						// Odd elements must be able to be stored in value types.
+						if (!classDef.typeDef.genericTypes[ii % 2].CanStoreValue(context, aiType)) {
+							LogCompileErr(context, ParseErrorType.TypeMismatch, "Container initializer value #" + ii + " cannot be stored in Dictionary.");
+							error = true;
+							return null;
+						}
+					}
+				}
+			}
+
+			if (null != _classInitializer) {
 				ClassValue tempClass = new ClassValue();
 				tempClass.classDef = classDef;
 				if (!context.stack.PushDefstructorScope(tempClass, null)) {
@@ -2462,7 +2508,7 @@ namespace Pebble {
 					return null;
 				}
 
-				_initializer.TypeCheck(context, ref error);
+				_classInitializer.TypeCheck(context, ref error);
 
 				context.stack.PopScope();
 			}
@@ -2476,13 +2522,37 @@ namespace Pebble {
 			if (context.IsRuntimeErrorSet())
 				return null;
 
-			if (null != _initializer) {
+
+			if (null != _collectionInitializer) {
+				PebbleList plist = _newInstance as PebbleList;
+				PebbleDictionary pdict = _newInstance as PebbleDictionary;
+
+				object key = null;
+				for (int ii = 0; ii < _collectionInitializer.Count; ++ii) {
+					object val = _collectionInitializer[ii].Evaluate(context);
+					if (context.IsRuntimeErrorSet())
+						return null;
+
+					if (plist != null) {
+						// The type of the evaluated value might not match the type of the list.
+						// However, I think it's correct to make these variables have the list's type. 
+						plist.list.Add(new Variable("!arrayInitializer added", plist.classDef.typeDef.genericTypes[0], val));
+					} else {
+						if (ii % 2 == 0)
+							key = val;
+						else
+							pdict.dictionary.Add(key, new Variable("!arrayInitializer added", pdict.classDef.typeDef.genericTypes[1], val));
+					}
+				}
+			}
+
+			if (null != _classInitializer) {
 				if (!context.stack.PushDefstructorScope(_newInstance, context)) {
 					SetRuntimeError(context, RuntimeErrorType.StackOverflow, "Expr_New.Evaluate - stack overflow (initializer).");
 					return null;
 				}
 
-				_initializer.Evaluate(context);
+				_classInitializer.Evaluate(context);
 				if (context.IsRuntimeErrorSet()) {
 					context.stack.PopScope();
 					return null;

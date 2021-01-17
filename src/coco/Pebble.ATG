@@ -347,7 +347,7 @@ PostfixExpr<ref IExpr expr>					(. ExprList args = null; IExpr indexExpr = null;
 	}.
 
 //Primary = ident | intcon | floatcon | charcon | string | '(' Expr ')'.
-Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = null; ITypeRef valType = null; IExpr initializer = null; .)
+Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = null; ITypeRef valType = null; IExpr initializer = null; ExprList collectionInitializer = null; .)
 =	( 
 	(IF(IsScopeOpStart()) Ident<ref className> "::" ident	(. expr = new Expr_Scope(this, className, t.val); .) )
 	| "::" ident											(. expr = new Expr_Scope(this, null, t.val); .)
@@ -357,7 +357,7 @@ Primary<ref IExpr expr>										(. string className = null; IExpr exprBlock = n
 	//| Test<ref expr>
 	| Literal<ref expr>
 	| '(' Expr<ref expr> ')'
-	| "new" [TypeSpecifierNoFunc<ref valType>] [ EmbeddedStatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, initializer); .)
+	| "new" [TypeSpecifierNoFunc<ref valType>] [ CollectionInitializer<ref collectionInitializer> ] [ EmbeddedStatementBlock<ref initializer> ] (. expr = new Expr_New(this, valType, collectionInitializer, initializer); .)
 	).
 
 Literal<ref IExpr expr>
@@ -491,6 +491,10 @@ EmbeddedStatementBlock<ref IExpr exprBlock>
 	'{'	{
 		EmbeddedStat<ref expr>	(. if (null != expr) block.nodes.Add(expr); expr = null; .) 
 	} '}'.
+
+// For collection initialization blocks in "new" expressions.
+CollectionInitializer<ref ExprList exprList>		(. /* exprList = new ExprList(); IExpr expr = null; */ .)
+=	"[[" [	ArgExprList<ref exprList> ] "]]" .
 
 /* This is used ONLY for the statements immediately following If or For statements. Those statements can be anything that could be inside
 a If or For BLOCK, EXCEPT declarations and asserts.

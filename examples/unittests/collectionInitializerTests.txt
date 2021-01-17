@@ -1,0 +1,89 @@
+
+void Check(List<string> ls) {
+	assert(3 == #ls && "a" == ls[0] && "b" == ls[1] && "c" == ls[2]);
+}	
+
+void CheckD(Dictionary<string, num> dsn, string msg = "") {
+	assert(3 == #dsn && 1 == dsn["a"] && 2 == dsn["b"] && 3 == dsn["c"], msg);
+}	
+
+// ****************************************************************************
+// *** List
+// ****************************************************************************
+
+List<string> ls0 = new;
+List<string> ls1 = new { Add("a", "b", "c"); };
+Check(ls1);
+List<string> ls2 = new [[ "a", "b", "c" ]];
+Check(ls2);
+List<string> ls3 = new [[ "c", "b", "a" ]] { Reverse(); };
+Check(ls3);
+
+List<string> ls4 = new List<string>;
+List<string> ls5 = new List<string> { Add("a", "b", "c"); };
+Check(ls5);
+List<string> ls6 = new List<string> [[ "a", "b", "c" ]];
+Check(ls6);
+List<string> ls7 = new List<string> [[ "c", "b", "a" ]] { Reverse(); };
+Check(ls7);
+
+// Trailing comma. *not implemented*
+//List<string> ls8 = new [[ "c", "b", "a", ]];
+
+// Following construction with index.
+assert("c" == new List<string> [["a", "b", "c"]][2]);
+assert("c" == new List<string> [["a", "b"]]{ Add("c"); }[2]);
+
+// Empty initializer should be ok.
+assert(0 == #(new List<string> [[]]));
+
+// Inside function call arguments
+void InsideFuncArgs(List<string> ls) {
+	Check(ls);
+}
+InsideFuncArgs(new List<string> [["a", "b", "c"]]);
+
+
+// ****************************************************************************
+// *** Dictionary
+// ****************************************************************************
+
+Dictionary<string, num> ds0 = new;
+Dictionary<string, num> ds1 = new { Add("a", 1).Add("b", 2).Add("c", 3); };
+CheckD(ds1, "ds1");
+Dictionary<string, num> ds2 = new [["a", 1, "b", 2, "c", 3]];
+CheckD(ds2, "ds2");
+Dictionary<string, num> ds3 = new [["a", 1, "b", 2]] { Add("c", 3); };
+CheckD(ds2, "ds3");
+
+// Following construction with index.
+assert(3 == new Dictionary<string, num> [["a", 1, "b", 2, "c", 3]]["c"]);
+assert(3 == new Dictionary<string, num> [["a", 1, "b", 2]] { Add("c", 3); }["c"]);
+
+// Inside function call arguments
+void InsideFuncArgsD(Dictionary<string, num> ds) {
+	CheckD(ds);
+}
+InsideFuncArgsD(new Dictionary<string, num> [["a", 1, "b", 2, "c", 3]]);
+
+
+// ****************************************************************************
+// *** Failures
+// ****************************************************************************
+
+class CIT {
+	CIT a;
+};
+CIT nullCIT;
+
+
+// Errors in initializers.
+assert(ScriptError::NumberInvalid) { new List<num> [[ 1 / 0 ]]; }
+assert(ScriptError::NullAccessViolation) { new Dictionary<num, CIT> [[ 1, nullCIT.a ]]; }
+
+// Can only be used on containers.
+assert(ScriptError::CollectionInitializerOnContainersOnly) { new CIT [[ 1 ]]; }
+
+// Dictionary needs even number of initializers.
+assert(ScriptError::CollectionInitializerDictionaryOdd) { new Dictionary<string, num> [["a", 1, "b"]]; }
+
