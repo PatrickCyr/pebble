@@ -306,6 +306,15 @@ namespace Pebble {
 			return newClass;
 		}
 
+		// Convenience function for registering a List<> with a given type, because this gets done a number of times.
+		public ClassDef RegisterIfUnregisteredList(ITypeDef valueType) {
+			List<ITypeDef> genericTypes = new List<ITypeDef>();
+			genericTypes.Add(valueType);
+
+			TypeDef_Class listTypeDef = TypeFactory.GetTypeDef_Class("List", genericTypes, false);
+			return engine.defaultContext.RegisterIfUnregisteredTemplate(listTypeDef);
+		}
+
 		public ClassDef GetClass(string name) {
 			return _classes.ContainsKey(name) ? _classes[name] : null;
 		}

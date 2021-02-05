@@ -9,7 +9,8 @@ List<string> files = new {
 		"StreamLib.cs",
 		"ConsoleLib.cs",
 		"DateTimeLib.cs",
-		"FileLib.cs"
+		"FileLib.cs",
+		"RegexLib.cs"
 	);
 };
 

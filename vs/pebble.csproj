@@ -110,6 +110,9 @@
     <Compile Include="..\src\lib\MathLib.cs">
       <Link>MathLib.cs</Link>
     </Compile>
+    <Compile Include="..\src\lib\RegexLib.cs">
+      <Link>RegexLib.cs</Link>
+    </Compile>
     <Compile Include="..\src\lib\StreamLib.cs">
       <Link>StreamLib.cs</Link>
     </Compile>

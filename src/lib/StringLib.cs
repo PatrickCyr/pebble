@@ -27,13 +27,7 @@ namespace Pebble {
 
 			// This makes sure List<num> is registered in the type library, as this class uses it and we can't rely
 			// scripts to register it.
-			{
-				List<ITypeDef> gTypes = new ArgList();
-				gTypes.Add(IntrinsicTypeDefs.NUMBER);
-
-				TypeDef_Class listNumTypeDef = TypeFactory.GetTypeDef_Class("List", gTypes, false);
-				ClassDef listNumClassDef = engine.defaultContext.RegisterIfUnregisteredTemplate(listNumTypeDef);
-			}
+			engine.defaultContext.RegisterIfUnregisteredList(IntrinsicTypeDefs.NUMBER);
 
 			//@ static num CompareTo(string, string)
 			//   Wraps C# CompareTo function, which essentially returns a number < 0 if a comes before b 

@@ -33,8 +33,7 @@ namespace Pebble {
 			ClassDef resultClassDef = engine.defaultContext.RegisterIfUnregisteredTemplate(resultTypeDef);
 
 			// This does List<string>.
-			TypeDef_Class listStringTypeDef = TypeFactory.GetTypeDef_Class("List", genericTypes, false);
-			ClassDef listStringClassDef = engine.defaultContext.RegisterIfUnregisteredTemplate(listStringTypeDef);
+			ClassDef listStringClassDef = engine.defaultContext.RegisterIfUnregisteredList(IntrinsicTypeDefs.STRING);
 
 			// ***
 

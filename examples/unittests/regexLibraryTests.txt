@@ -1,0 +1,85 @@
+// Regex library unit tests.
+
+string input = "Hello 123 world 456!";
+string pattern = "\\d+";
+
+// IsMatch
+{
+	assert(Regex::IsMatch(input, pattern));
+	assert(!Regex::IsMatch("bad", pattern));
+}
+
+// Match
+{
+	RegexMatch match = Regex::Match(input, pattern);
+	assert(null != match);
+	assert(6 == match.index);
+	assert(3 == match.length);
+	assert("123" == match.value);
+	match = Regex::Match("bad", pattern);
+	assert(null == match);
+}
+
+// Matches
+{
+	List<RegexMatch> matches = Regex::Matches(input, pattern);
+	assert(2 == #matches);
+	assert(6 == matches[0].index);
+	assert(3 == matches[0].length);
+	assert("123" == matches[0].value);
+	assert(16 == matches[1].index);
+	assert(3 == matches[1].length);
+	assert("456" == matches[1].value);
+	
+	matches = Regex::Matches("bad", pattern);
+	assert(null == matches);
+}
+
+// Replace
+{
+	assert("Hello poo world poo!" == Regex::Replace(input, pattern, "poo"));
+	assert("bad" == Regex::Replace("bad", pattern, "poo"));
+}
+
+// Split
+{
+	List<string> split = Regex::Split(input, pattern);
+	List<string> splitTest = new [[ "Hello ", " world ", "!" ]];
+	assert(#split == #splitTest);
+	foreach (ix, str in split) {
+		assert(str == splitTest[ix]);
+	}
+}
+
+// *** Groups
+{
+	// In C#, group 0 is apparently the default group, so there is always a group 0 which just duplicates the info of the containing match. Pebble changes this to reduce allocation: there is no default group 0.
+	//       012345678901234567890123
+	input = "Alice=1, Bob=2, Claire=3";
+	pattern = "(\\w+)=(\\d+)";
+	List<RegexMatch> matches = Regex::Matches(input, pattern);
+	assert(3 == #matches);
+	assert(2 == #matches[0].groups);
+	RegexGroup group = matches[0].groups[0];
+	assert(group.value == "Alice" && 0 == group.index && 5 == group.length);
+	group = matches[0].groups[1];
+	assert(group.value == "1" && 6 == group.index && 1 == group.length);
+
+	assert(2 == #matches[1].groups);
+	group = matches[1].groups[0];
+	assert(group.value == "Bob" && 9 == group.index && 3 == group.length);
+	group = matches[1].groups[1];
+	assert(group.value == "2" && 13 == group.index && 1 == group.length);
+
+	assert(2 == #matches[2].groups);
+	group = matches[2].groups[0];
+	assert(group.value == "Claire" && 16 == group.index && 6 == group.length);
+	group = matches[2].groups[1];
+	assert(group.value == "3" && 23 == group.index && 1 == group.length);
+
+	// When no groups, matches.groups is null.
+	pattern = "\\w+=\\d+";
+	matches = Regex::Matches(input, pattern);
+	assert(3 == #matches);
+	assert(null == matches[0].groups && null == matches[1].groups && null == matches[2].groups);
+}

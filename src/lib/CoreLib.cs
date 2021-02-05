@@ -237,6 +237,7 @@ namespace Pebble {
 			CoreList.Register(engine);
 			CoreDictionary.Register(engine);
 			MathLib.Register(engine);
+			RegexLib.Register(engine);
 			StringLib.Register(engine);
 			StreamLib.Register(engine);
 
