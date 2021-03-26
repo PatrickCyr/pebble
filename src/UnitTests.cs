@@ -579,6 +579,8 @@ namespace Pebble {
 				{"typealias numalias = num;", null},
 				// -- typealiases are global
 				{"{ NumFunc aNumFunc; true; }", true},
+				// -- scope operator works on typealiases
+				{"{ class TypeAliasTest { static bool b = true; }; typealias TAT = TypeAliasTest; TAT::b; }", true},
 
 				// *** Comments and empty expressions
 				// These should return null but have no compile errors.
@@ -898,10 +900,10 @@ namespace Pebble {
 
 				// Class
 				// -- many invalid places to attempt to declare classes
-				{"{ if (true) class InIf; }", ParseErrorType.SyntaxError}, 
+				{"{ if (true) class InIf; }", ParseErrorType.SyntaxError},
 				{"{ if (true) { class InIfBlock; } }", ParseErrorType.SyntaxError},
 				{"{ if (true) { { class InIfBlockBlock; } } }", ParseErrorType.SyntaxError},
-				{"{ for (i=1,1) class InFor; }", ParseErrorType.SyntaxError}, 
+				{"{ for (i=1,1) class InFor; }", ParseErrorType.SyntaxError},
 				{"{ for (i=1,1) { class InForBlock; } }", ParseErrorType.SyntaxError},
 				{"{ for (i=1,1) { { class InForBlockBlock; } } }", ParseErrorType.SyntaxError},
 				{"{ new A { class InsideDefstructor; }; }", ParseErrorType.SyntaxError},
@@ -1029,6 +1031,9 @@ namespace Pebble {
 				{"{ for(xxx=1, 10) { num xxx; }; }", ParseErrorType.SymbolAlreadyDeclared},
 				{"{ foreach (k, v in dict) { bool k; } }", ParseErrorType.SymbolAlreadyDeclared},
 				{"{ foreach (k, v in dict) { bool v; } }", ParseErrorType.SymbolAlreadyDeclared},
+				// -- using scope operator inappropriately
+				{"onetuo::b;", ParseErrorType.ClassNotDeclared},
+				{"num::b;", ParseErrorType.ClassNotDeclared},
 
 				// If
 				// -- allocation body (not embeddable statement)

@@ -499,12 +499,28 @@ namespace Pebble {
 				}
 				fieldType = _globVarRef.typeDef;
 			} else {
-				_scope = context.GetClass(_className);
+				ITypeDef classType = context.GetTypeByName(_className);
+				if (null == classType) { 
+					LogCompileErr(context, ParseErrorType.ClassNotDeclared, "Class " + _className + " not found.");
+					error = true;
+					return null;
+				}
+
+				if (!(classType is TypeDef_Class)) {
+					LogCompileErr(context, ParseErrorType.ClassNotDeclared, "'" + _className + "' type is not a class.");
+					error = true;
+					return null;
+				}
+
+				_scope = context.GetClass((classType as TypeDef_Class).className);
+				Pb.Assert(null != _scope, "How did we get a null scope after all that?");
+				/*
 				if (null == _scope) {
 					LogCompileErr(context, ParseErrorType.ClassNotDeclared, "Class " + _className + " not found.");
 					error = true;
 					return null;
 				}
+				*/
 
 				// Search first for statics.
 				_fieldRef = _scope.GetMemberRef(context, _field, ClassDef.SEARCH.STATIC, ref fieldType);
