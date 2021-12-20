@@ -251,7 +251,7 @@ namespace Pebble {
 						context.SetRuntimeError(RuntimeErrorType.ArrayIndexOutOfBounds, "RemoveRange: Count (" + count + ") cannot be negative.");
 						return null;
 					}
-					if ((start + count) >= list.Count) {
+					if ((start + count) > list.Count) {
 						context.SetRuntimeError(RuntimeErrorType.ArrayIndexOutOfBounds, "RemoveRange: Count " + count + " exceeds array length (" + list.Count + ").");
 						return null;
 					}
@@ -469,7 +469,7 @@ namespace Pebble {
 			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num>; testln.Set(-1, 100); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
 			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num>; testln.RemoveAt(0); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
 			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num>; testln.RemoveAt(-1); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
-			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num> { Add(0); }; testln.RemoveRange(0, 100); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
+			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num> { Add(0); }; testln.RemoveRange(0, 2); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
 			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num> { Add(0); }; testln.RemoveRange(0, -1); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
 			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num> { Add(0); }; testln.RemoveRange(1, 0); }", RuntimeErrorType.ArrayIndexOutOfBounds, verbose);
 			result &= engine.RunRuntimeFailTest("{ List<num> testln = new List<num>; testln.Sort(null); }", RuntimeErrorType.ArgumentInvalid, verbose);
