@@ -545,9 +545,15 @@ namespace Pebble {
 
 	public class PebbleEnum {
 		public class EnumValue {
-			public string name;
-			public IExpr initializer;
-			public object literalValue;
+			readonly public string name;
+			readonly public IExpr initializer;
+			readonly public object literalValue;
+
+			public EnumValue(string _name, IExpr _initializer, object _literalValue) {
+				name = _name;
+				initializer = _initializer;
+				literalValue = _literalValue;
+			}
 		}
 
 		public readonly string enumName;
@@ -605,8 +611,7 @@ namespace Pebble {
 
 			_classDef.AddMember(valueName, enumType, null, true);
 
-			EnumValue ev = new EnumValue();
-			ev.name = valueName;
+			EnumValue ev = new EnumValue(valueName, null, null);
 			_values.Add(ev);
 			return true;
 		}
@@ -618,9 +623,7 @@ namespace Pebble {
 
 			_classDef.AddMember(valueName, enumType, null, true);
 
-			EnumValue ev = new EnumValue();
-			ev.name = valueName;
-			ev.literalValue = litValue;
+			EnumValue ev = new EnumValue(valueName, null, litValue);
 			_values.Add(ev);
 
 			return ev;
@@ -633,9 +636,7 @@ namespace Pebble {
 
 			_classDef.AddMember(valueName, enumType, null, true);
 
-			EnumValue ev = new EnumValue();
-			ev.name = valueName;
-			ev.initializer = initializer;
+			EnumValue ev = new EnumValue(valueName, initializer, null);
 			_values.Add(ev);
 			return true;
 		}
