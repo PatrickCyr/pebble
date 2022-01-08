@@ -42,6 +42,7 @@ Note that typealiases and enums are not like classes. With typealiases there is 
 
 enums have the particular problem that they are generics, so if we were to try to register the enum during RegisterTypes the generic type would have to be available during RegisterTypes. It's certainly doable but there would be a tradeoff, and so I'm going to leave it alone until when/if it ever becomes an issue.
 
+
 # is and as
 
 The "is" and "as" expressions only work on simple classes. Notably they don't work on templates and functions. Consider this:
@@ -73,6 +74,7 @@ So templates cannot really be polyphorphic. Looking at functions...
 		A a = li[0] as A;
 		
 Just doesn't seem like anyone will ever have a need for such a feature.
+
 
 # Error handling in native functions
 

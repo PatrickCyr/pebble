@@ -1,16 +1,17 @@
 const string path = "../src/lib/";
 List<string> files = new {
 	Add(
-		"CoreLib.cs",
-		"MathLib.cs",
-		"StringLib.cs", 
-		"CoreList.cs",
-		"CoreDictionary.cs",
-		"StreamLib.cs",
 		"ConsoleLib.cs",
+		"CoreDictionary.cs",
+		"CoreLib.cs",
+		"CoreList.cs",
 		"DateTimeLib.cs",
+		"DebugLib.cs",
 		"FileLib.cs",
-		"RegexLib.cs"
+		"MathLib.cs",
+		"RegexLib.cs",
+		"StreamLib.cs",
+		"StringLib.cs",
 	);
 };
 
